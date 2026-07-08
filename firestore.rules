@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role == 'admin';
+    }
+
+    function isAuthority() {
+      return isAuthenticated() && getUserData().role == 'authority';
+    }
+
+    function isReporter(reportId) {
+      return isAuthenticated() && exists(/databases/$(database)/documents/reports/$(reportId)/identity/$(request.auth.uid));
+    }
+
+    function isAssignedAuthority(reportData) {
+      return isAuthority() && reportData.assignedAuthorityUid == request.auth.uid;
+    }
+
+    // Users Collection rules
+    match /users/{uid} {
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin() || isAuthority());
+      allow create, update: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
+      allow delete: if isAdmin();
+
+      // Nested user reports reference tracking
+      match /myReports/{reportId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == uid;
+      }
+      
+      // FCM Tokens subcollection
+      match /fcmTokens/{token} {
+        allow read, write: if isAuthenticated() && request.auth.uid == uid;
+      }
+    }
+
+    // Authorities Collection rules
+    match /authorities/{uid} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Reports Collection rules
+    match /reports/{reportId} {
+      allow create: if isAuthenticated();
+      allow read: if isAdmin() || isReporter(reportId) || isAssignedAuthority(resource.data);
+      allow update: if isAdmin() || isAssignedAuthority(resource.data);
+      allow delete: if isAdmin();
+
+      // IDENTITY subcollection - STRICT PRIVACY ENFORCEMENT
+      // Admin and Authorities CANNOT read this! Only the reporter themselves.
+      match /identity/{uid} {
+        allow read: if isAuthenticated() && request.auth.uid == uid;
+        allow create: if isAuthenticated() && request.auth.uid == uid;
+        allow update, delete: if false; // Identity cannot be modified/deleted once set
+      }
+
+      // Status Log subcollection
+      match /statusLog/{logId} {
+        allow read: if isAdmin() || isReporter(reportId) || (isAuthority() && get(/databases/$(database)/documents/reports/$(reportId)).data.assignedAuthorityUid == request.auth.uid);
+        allow create: if isAdmin() || (isAuthority() && get(/databases/$(database)/documents/reports/$(reportId)).data.assignedAuthorityUid == request.auth.uid) || isReporter(reportId);
+        allow update, delete: if false;
+      }
+    }
+
+    // Aggregates Collection rules
+    match /aggregates/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Allow incrementing stats upon report submission
+    }
+  }
+}

@@ -1,0 +1,96 @@
+name: zh2026
+description: "Nizhal - Anonymous Drug Incident Reporting Platform"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Firebase Core
+  firebase_core: ^3.13.0
+  firebase_auth: ^5.6.0
+  cloud_firestore: ^5.6.7
+  firebase_storage: ^12.4.5
+  firebase_messaging: ^15.2.5
+  firebase_analytics: ^11.4.5
+
+  # State Management
+  provider: ^6.1.4
+
+  # Navigation
+  go_router: ^15.1.2
+
+  # UI Components
+  google_fonts: ^6.2.1
+  flutter_animate: ^4.5.2
+  shimmer: ^3.0.0
+  fl_chart: ^0.70.2
+  cached_network_image: ^3.4.1
+  flutter_svg: ^2.0.17
+
+  # Maps & Location
+  google_maps_flutter: ^2.14.0
+  geolocator: ^13.0.2
+  geocoding: ^3.0.0
+
+  # Media
+  image_picker: ^1.1.2
+  image_cropper: ^8.0.2
+  image: ^4.2.0
+  path: ^1.9.0
+
+  # PDF Generation
+  pdf: ^3.11.2
+  printing: ^5.13.5
+
+  # Security
+  flutter_secure_storage: ^9.2.4
+  crypto: ^3.0.6
+  pointycastle: ^3.9.1
+  encrypt: ^5.0.3
+
+  # Utilities
+  uuid: ^4.5.1
+  intl: ^0.20.2
+  url_launcher: ^6.3.1
+  share_plus: ^10.1.4
+  connectivity_plus: ^6.1.4
+  path_provider: ^2.1.5
+  permission_handler: ^11.3.1
+
+  # Local Storage
+  shared_preferences: ^2.5.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/data/
+
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Inter-ExtraBold.ttf
+          weight: 800

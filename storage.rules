@@ -1,0 +1,33 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isReporter(reportId) {
+      return isAuthenticated() && 
+        firestore.exists(/databases/(default)/documents/reports/$(reportId)/identity/$(request.auth.uid));
+    }
+    
+    function isAssignedAuthority(reportId) {
+      return isAuthenticated() && 
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'authority' &&
+        firestore.get(/databases/(default)/documents/reports/$(reportId)).data.assignedAuthorityUid == request.auth.uid;
+    }
+
+    // Report Media rules
+    match /report_media/{reportId}/{allPaths=**} {
+      allow read: if isAdmin() || isReporter(reportId) || isAssignedAuthority(reportId);
+      allow create: if isAuthenticated(); // Allow uploading photos during submission
+      allow delete: if isAdmin() || isReporter(reportId);
+    }
+  }
+}
