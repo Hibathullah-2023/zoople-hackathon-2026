@@ -281,6 +281,21 @@ class _AuthorityCard extends StatelessWidget {
               ],
             ),
           ),
+          // ─── Edit Button ───
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, size: 20),
+            color: AppColors.secondary,
+            tooltip: 'Edit Authority',
+            onPressed: () => _showEditDialog(context),
+          ),
+          // ─── Delete Button ───
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 20),
+            color: AppColors.error,
+            tooltip: 'Delete Authority',
+            onPressed: () => _showDeleteConfirmation(context),
+          ),
+          const SizedBox(width: 4),
           Container(
             padding:
                 const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -306,4 +321,164 @@ class _AuthorityCard extends StatelessWidget {
       ),
     );
   }
+
+  /// Show edit dialog pre-filled with authority's current data
+  void _showEditDialog(BuildContext context) {
+    final nameController = TextEditingController(text: authority.name);
+    final badgeController = TextEditingController(text: authority.badgeId ?? '');
+    String? selectedJurisdiction = authority.jurisdiction;
+    String? selectedSpecialization = authority.specialization;
+    bool isActive = authority.isActive;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: AppColors.surfaceContainerHigh,
+          title: const Text('Edit Authority'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                      labelText: 'Name',
+                      prefixIcon: Icon(Icons.person_outline)),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: badgeController,
+                  decoration: const InputDecoration(
+                      labelText: 'Badge ID',
+                      prefixIcon: Icon(Icons.badge_outlined)),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedJurisdiction,
+                  dropdownColor: AppColors.surfaceContainerHigh,
+                  decoration: const InputDecoration(
+                      labelText: 'Jurisdiction (District)',
+                      prefixIcon: Icon(Icons.map_outlined)),
+                  items: KeralaLocations.districts.map((d) {
+                    return DropdownMenuItem(value: d, child: Text(d));
+                  }).toList(),
+                  onChanged: (val) =>
+                      setDialogState(() => selectedJurisdiction = val),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedSpecialization,
+                  dropdownColor: AppColors.surfaceContainerHigh,
+                  decoration: const InputDecoration(
+                      labelText: 'Specialization',
+                      prefixIcon: Icon(Icons.work_outline)),
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'narcotics', child: Text('Narcotics')),
+                    DropdownMenuItem(
+                        value: 'patrol', child: Text('Patrol')),
+                    DropdownMenuItem(
+                        value: 'investigation',
+                        child: Text('Investigation')),
+                  ],
+                  onChanged: (val) =>
+                      setDialogState(() => selectedSpecialization = val),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  title: const Text('Active Status'),
+                  value: isActive,
+                  activeColor: AppColors.secondary,
+                  onChanged: (val) =>
+                      setDialogState(() => isActive = val),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try {
+                  await context.read<AuthService>().updateAuthority(
+                        authorityDocId: authority.uid,
+                        name: nameController.text.trim(),
+                        badgeId: badgeController.text.trim().isNotEmpty
+                            ? badgeController.text.trim()
+                            : null,
+                        jurisdiction: selectedJurisdiction,
+                        specialization: selectedSpecialization,
+                        isActive: isActive,
+                      );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Authority updated.')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Show delete confirmation dialog
+  void _showDeleteConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceContainerHigh,
+        title: const Text('Delete Authority'),
+        content: Text(
+          'Are you sure you want to delete "${authority.name}"?\n\nThis will remove their profile and unassign any pending cases. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await context
+                    .read<AuthService>()
+                    .deleteAuthority(authority.uid);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Authority deleted.')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
 }
+

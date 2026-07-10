@@ -1,0 +1,38 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "auth": {
+    "providers": {
+      "emailPassword": {
+        "enabled": true
+      }
+    }
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "zooplehackathon",
+          "appId": "1:968194436942:android:f7a18ca73d69d55f6fb81f",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "zooplehackathon",
+          "configurations": {
+            "android": "1:968194436942:android:f7a18ca73d69d55f6fb81f",
+            "ios": "1:968194436942:ios:a8c53f7a003e02346fb81f",
+            "macos": "1:968194436942:ios:a8c53f7a003e02346fb81f",
+            "web": "1:968194436942:web:5806e60b3dd24bbd6fb81f",
+            "windows": "1:968194436942:web:fa721cd78beccab76fb81f"
+          }
+        }
+      }
+    }
+  }
+}

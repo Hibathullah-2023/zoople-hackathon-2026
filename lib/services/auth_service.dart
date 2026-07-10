@@ -290,4 +290,42 @@ class AuthService {
         'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#\$%';
     return List.generate(16, (_) => chars[random.nextInt(chars.length)]).join();
   }
+
+  // ─── Admin-only: Update Authority ───
+
+  /// Update authority profile fields (name, badge, jurisdiction, specialization, active status).
+  Future<void> updateAuthority({
+    required String authorityDocId,
+    String? name,
+    String? badgeId,
+    String? jurisdiction,
+    String? specialization,
+    bool? isActive,
+  }) async {
+    final updates = <String, dynamic>{};
+    if (name != null) updates['name'] = name;
+    if (badgeId != null) updates['badgeId'] = badgeId;
+    if (jurisdiction != null) updates['jurisdiction'] = jurisdiction;
+    if (specialization != null) updates['specialization'] = specialization;
+    if (isActive != null) updates['isActive'] = isActive;
+
+    if (updates.isNotEmpty) {
+      await _firestore
+          .collection(AppConstants.authoritiesCollection)
+          .doc(authorityDocId)
+          .update(updates);
+    }
+  }
+
+  // ─── Admin-only: Delete Authority ───
+
+  /// Delete an authority account from Firestore.
+  /// NOTE: This removes the authority document. The Firebase Auth user
+  /// would need to be deleted via Admin SDK / Cloud Function in production.
+  Future<void> deleteAuthority(String authorityDocId) async {
+    await _firestore
+        .collection(AppConstants.authoritiesCollection)
+        .doc(authorityDocId)
+        .delete();
+  }
 }

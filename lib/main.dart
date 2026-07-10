@@ -2,7 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-
+import 'firebase_options.dart';
 import 'constants/app_theme.dart';
 import 'services/auth_service.dart';
 import 'services/report_service.dart';
@@ -28,7 +28,7 @@ void main() async {
   );
 
   // Initialize Firebase
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(const NizhalApp());
 }

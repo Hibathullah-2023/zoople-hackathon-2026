@@ -1,0 +1,9 @@
+{
+  "name": "nizhal-seeder",
+  "version": "1.0.0",
+  "description": "Seeder script for Nizhal Firebase project",
+  "main": "seed_data.js",
+  "dependencies": {
+    "firebase": "^10.12.0"
+  }
+}

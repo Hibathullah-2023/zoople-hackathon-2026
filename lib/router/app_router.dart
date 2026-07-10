@@ -75,14 +75,6 @@ class AppRouter {
           path: '/map',
           builder: (context, state) => const KeralaMapScreen(),
         ),
-        GoRoute(
-          path: '/rehab/chat',
-          builder: (context, state) => const RehabChatScreen(),
-        ),
-        GoRoute(
-          path: '/rehab/centres',
-          builder: (context, state) => const RehabCentresScreen(),
-        ),
 
         // ─── End User Shell ───
         ShellRoute(
@@ -109,6 +101,14 @@ class AppRouter {
             GoRoute(
               path: '/profile',
               builder: (context, state) => const ProfileScreen(),
+            ),
+            GoRoute(
+              path: '/rehab/chat',
+              builder: (context, state) => const RehabChatScreen(),
+            ),
+            GoRoute(
+              path: '/rehab/centres',
+              builder: (context, state) => const RehabCentresScreen(),
             ),
           ],
         ),

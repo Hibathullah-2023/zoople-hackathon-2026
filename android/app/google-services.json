@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "968194436942",
+    "project_id": "zooplehackathon",
+    "storage_bucket": "zooplehackathon.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:968194436942:android:f7a18ca73d69d55f6fb81f",
+        "android_client_info": {
+          "package_name": "com.example.zh2026"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAnWcSHCr6O9-yRaeJPAMnPz7jt6vS0hQ4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
