@@ -44,10 +44,16 @@ service cloud.firestore {
       }
     }
 
+    // Aadhaar Hashes rules for duplicate prevention
+    match /aadhaar_hashes/{hash} {
+      allow read, create: if true;
+    }
+
     // Authorities Collection rules
     match /authorities/{uid} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['assignedCaseCount']));
     }
 
     // Reports Collection rules
@@ -68,7 +74,7 @@ service cloud.firestore {
       // Status Log subcollection
       match /statusLog/{logId} {
         allow read: if isAdmin() || isReporter(reportId) || (isAuthority() && get(/databases/$(database)/documents/reports/$(reportId)).data.assignedAuthorityUid == request.auth.uid);
-        allow create: if isAdmin() || (isAuthority() && get(/databases/$(database)/documents/reports/$(reportId)).data.assignedAuthorityUid == request.auth.uid) || isReporter(reportId);
+        allow create: if isAuthenticated() && (request.resource.data.changedBy == request.auth.uid || isAdmin() || isAuthority());
         allow update, delete: if false;
       }
     }

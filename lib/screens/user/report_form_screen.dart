@@ -1,8 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
@@ -25,11 +29,13 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
 
   // Form data
   final _descriptionController = TextEditingController();
+  final _otherCategoryDetailController = TextEditingController();
   String? _selectedCategory;
   final List<XFile> _photos = [];
   String? _selectedDistrict;
   String? _selectedCity;
   final _addressController = TextEditingController();
+  GeoPoint? _gpsCoordinates;
   bool _isSubmitting = false;
   String? _submittedReportId;
 
@@ -38,6 +44,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
   @override
   void dispose() {
     _descriptionController.dispose();
+    _otherCategoryDetailController.dispose();
     _addressController.dispose();
     super.dispose();
   }
@@ -45,7 +52,124 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
   void _nextStep() {
     if (!_validateCurrentStep()) return;
     if (_currentStep < _totalSteps - 1) {
-      setState(() => _currentStep++);
+      setState(() {
+        _currentStep++;
+        if (_currentStep == 3) {
+          _promptLocationPermission();
+        }
+      });
+    }
+  }
+
+  Future<void> _promptLocationPermission() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Enable Location services'),
+          content: const Text('Nizhal needs location access to pinpoint incident coordinates and suggest nearest authorities.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Skip'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                final newPermission = await Geolocator.requestPermission();
+                if (newPermission == LocationPermission.whileInUse ||
+                    newPermission == LocationPermission.always) {
+                  _getCurrentLocation();
+                }
+              },
+              child: const Text('Allow'),
+            ),
+          ],
+        ),
+      );
+    } else if (permission == LocationPermission.whileInUse ||
+        permission == LocationPermission.always) {
+      _getCurrentLocation();
+    }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      _showError('Location services are disabled. Please enable them in settings.');
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        _showError('Location permissions are denied.');
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      _showError('Location permissions are permanently denied.');
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high
+      );
+
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude
+      );
+
+      if (placemarks.isNotEmpty) {
+        final pm = placemarks.first;
+        String? detectedDistrict;
+        String? detectedCity = pm.locality ?? pm.subLocality ?? pm.name;
+
+        final cleanSubAdmin = (pm.subAdministrativeArea ?? '').toLowerCase();
+        final cleanLocality = (pm.locality ?? '').toLowerCase();
+
+        for (final district in KeralaLocations.districts) {
+          if (cleanSubAdmin.contains(district.toLowerCase()) ||
+              cleanLocality.contains(district.toLowerCase()) ||
+              (pm.administrativeArea ?? '').toLowerCase().contains(district.toLowerCase())) {
+            detectedDistrict = district;
+            break;
+          }
+        }
+
+        detectedDistrict ??= 'Ernakulam';
+
+        setState(() {
+          _selectedDistrict = detectedDistrict;
+          _selectedCity = detectedCity;
+          _addressController.text = '${pm.name ?? ""}, ${pm.street ?? ""}, ${pm.postalCode ?? ""}';
+          _gpsCoordinates = GeoPoint(position.latitude, position.longitude);
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Location detected: $detectedCity, $detectedDistrict'),
+              backgroundColor: AppColors.secondary,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      _showError('Failed to get location details: $e');
+    } finally {
+      setState(() => _isSubmitting = false);
     }
   }
 
@@ -68,8 +192,17 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
           _showError('Please select a category.');
           return false;
         }
+        if (_selectedCategory == AppConstants.categoryOther &&
+            _otherCategoryDetailController.text.trim().isEmpty) {
+          _showError('Please specify the category detail.');
+          return false;
+        }
         return true;
-      case 2: // Photos (optional)
+      case 2: // Photos (Required)
+        if (_photos.isEmpty) {
+          _showError('Evidence must be uploaded. Please add at least one photo.');
+          return false;
+        }
         return true;
       case 3: // Location
         if (_selectedDistrict == null) {
@@ -131,6 +264,9 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
   }
 
   Future<void> _submitReport() async {
+    final authService = context.read<AuthService>();
+    final reportService = context.read<ReportService>();
+
     // Show warning dialog first
     final confirmed = await _showWarningDialog();
     if (!confirmed) return;
@@ -138,8 +274,6 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final authService = context.read<AuthService>();
-      final reportService = context.read<ReportService>();
       final user = await authService.getCurrentUserProfile();
 
       if (user == null) {
@@ -147,8 +281,20 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         return;
       }
 
-      // TODO: Upload photos to Firebase Storage and get URLs
       final mediaUrls = <String>[];
+      for (final photo in _photos) {
+        final ref = FirebaseStorage.instance
+            .ref()
+            .child('evidence')
+            .child('${DateTime.now().millisecondsSinceEpoch}_${photo.name}');
+        final bytes = await photo.readAsBytes();
+        final uploadTask = await ref.putData(
+          bytes,
+          SettableMetadata(contentType: 'image/jpeg'),
+        );
+        final url = await uploadTask.ref.getDownloadURL();
+        mediaUrls.add(url);
+      }
 
       final report = await reportService.submitReport(
         reporterUid: user.uid,
@@ -157,8 +303,10 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         anonymousId: user.anonymousId,
         isAnonymous: user.isAnonymous,
         description: _descriptionController.text.trim(),
-        category: _selectedCategory!,
-        location: null, // TODO: GPS coordinates
+        category: _selectedCategory == AppConstants.categoryOther
+            ? 'Other: ${_otherCategoryDetailController.text.trim()}'
+            : _selectedCategory!,
+        location: _gpsCoordinates,
         locationAddress: _addressController.text.trim().isNotEmpty
             ? _addressController.text.trim()
             : null,
@@ -503,6 +651,17 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
             ),
           );
         }),
+        if (_selectedCategory == AppConstants.categoryOther) ...[
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _otherCategoryDetailController,
+            style: const TextStyle(color: AppColors.onSurface),
+            decoration: const InputDecoration(
+              labelText: 'Please specify category detail *',
+              hintText: 'Describe the specific category...',
+            ),
+          ),
+        ],
       ],
     );
   }

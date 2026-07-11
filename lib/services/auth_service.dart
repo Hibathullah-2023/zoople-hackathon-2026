@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import '../constants/app_constants.dart';
 import '../models/user_model.dart';
@@ -65,7 +66,7 @@ class AuthService {
     final salt = _aadhaarService.generateSalt();
     final aadhaarHash = await _aadhaarService.hashAadhaar(aadhaarNumber, salt);
 
-    // 6. Create user document in Firestore
+    // 6. Create user document in Firestore and register duplicate hash
     final now = DateTime.now();
     final userModel = UserModel(
       uid: user.uid,
@@ -82,13 +83,24 @@ class AuthService {
       updatedAt: now,
     );
 
-    await _firestore
+    final dupHash = await _aadhaarService.getAadhaarDuplicateHash(
+      aadhaarNumber,
+    );
+
+    final batch = _firestore.batch();
+
+    final userRef = _firestore
         .collection(AppConstants.usersCollection)
-        .doc(user.uid)
-        .set({
+        .doc(user.uid);
+    batch.set(userRef, {
       ...userModel.toFirestore(),
       'aadhaarSalt': salt, // Store salt separately for duplicate checks
     });
+
+    final dupRef = _firestore.collection('aadhaar_hashes').doc(dupHash);
+    batch.set(dupRef, {'uid': user.uid, 'createdAt': Timestamp.now()});
+
+    await batch.commit();
 
     return userModel;
   }
@@ -175,12 +187,26 @@ class AuthService {
       throw Exception('Not authenticated.');
     }
 
+    if (newPassword.length < 8) {
+      throw Exception('New password must be at least 8 characters.');
+    }
+    if (newPassword.contains(' ')) {
+      throw Exception('New password must not contain spaces.');
+    }
+
     // Re-authenticate
     final credential = EmailAuthProvider.credential(
       email: user.email!,
       password: currentPassword,
     );
-    await user.reauthenticateWithCredential(credential);
+    try {
+      await user.reauthenticateWithCredential(credential);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password') {
+        throw Exception('Incorrect current password.');
+      }
+      throw Exception(e.message ?? 'Re-authentication failed.');
+    }
 
     // Update password
     await user.updatePassword(newPassword);
@@ -194,23 +220,15 @@ class AuthService {
     await _firestore
         .collection(AppConstants.usersCollection)
         .doc(user.uid)
-        .update({
-      'isAnonymous': isAnonymous,
-      'updatedAt': Timestamp.now(),
-    });
+        .update({'isAnonymous': isAnonymous, 'updatedAt': Timestamp.now()});
   }
 
   /// Update user profile fields
-  Future<void> updateProfile({
-    String? displayName,
-    String? phone,
-  }) async {
+  Future<void> updateProfile({String? displayName, String? phone}) async {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    final updates = <String, dynamic>{
-      'updatedAt': Timestamp.now(),
-    };
+    final updates = <String, dynamic>{'updatedAt': Timestamp.now()};
     if (displayName != null) updates['displayName'] = displayName;
     if (phone != null) updates['phone'] = phone;
 
@@ -241,54 +259,65 @@ class AuthService {
   // ─── Admin-only: Create Authority Account ───
 
   /// Admin creates an authority account.
-  /// The authority receives an email to set their password.
   Future<void> createAuthorityAccount({
     required String email,
     required String name,
+    required String password,
     String? badgeId,
     String? jurisdiction,
     String? specialization,
   }) async {
-    // Note: In production, this would use Firebase Admin SDK via Cloud Functions
-    // For MVP, admin creates a temporary password and the authority resets it
-
-    final tempPassword = _generateTempPassword();
-
-    // Create Firebase Auth user
-    // This should ideally be done via Cloud Functions to avoid
-    // signing out the current admin. For MVP, we'll use a workaround.
-    
-    // Store authority details in Firestore
-    // The authority will be created when they first sign in
-    await _firestore
-        .collection(AppConstants.authoritiesCollection)
-        .doc(email)
-        .set({
-      'email': email,
-      'name': name,
-      'badgeId': badgeId,
-      'jurisdiction': jurisdiction,
-      'specialization': specialization,
-      'isActive': true,
-      'assignedCaseCount': 0,
-      'createdAt': Timestamp.now(),
-      'tempPassword': tempPassword, // Will be removed after first login
-      'isPendingSetup': true,
-    });
-
-    // Send password reset email so authority can set their own password
-    try {
-      await _auth.sendPasswordResetEmail(email: email);
-    } catch (_) {
-      // If user doesn't exist yet, we'll handle it differently
+    if (password.length < 8) {
+      throw Exception('Password must be at least 8 characters.');
     }
-  }
+    if (password.contains(' ')) {
+      throw Exception('Password must not contain spaces.');
+    }
 
-  String _generateTempPassword() {
-    final random = Random.secure();
-    const chars =
-        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#\$%';
-    return List.generate(16, (_) => chars[random.nextInt(chars.length)]).join();
+    // Initialize temporary secondary app to create user without signing out current admin
+    final tempApp = await Firebase.initializeApp(
+      name: 'tempApp_${DateTime.now().millisecondsSinceEpoch}',
+      options: Firebase.app().options,
+    );
+
+    try {
+      final tempAuth = FirebaseAuth.instanceFor(app: tempApp);
+      final credential = await tempAuth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+
+      final uid = credential.user!.uid;
+      final now = DateTime.now();
+
+      // Store in users collection
+      await _firestore.collection(AppConstants.usersCollection).doc(uid).set({
+        'uid': uid,
+        'email': email.trim(),
+        'role': 'authority',
+        'displayName': name.trim(),
+        'status': AppConstants.userActive,
+        'createdAt': Timestamp.fromDate(now),
+        'updatedAt': Timestamp.fromDate(now),
+      });
+
+      // Store in authorities collection
+      await _firestore
+          .collection(AppConstants.authoritiesCollection)
+          .doc(uid)
+          .set({
+            'email': email.trim(),
+            'name': name.trim(),
+            'badgeId': badgeId,
+            'jurisdiction': jurisdiction,
+            'specialization': specialization,
+            'isActive': true,
+            'assignedCaseCount': 0,
+            'createdAt': Timestamp.fromDate(now),
+          });
+    } finally {
+      await tempApp.delete();
+    }
   }
 
   // ─── Admin-only: Update Authority ───

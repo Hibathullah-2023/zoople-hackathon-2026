@@ -60,7 +60,24 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: const Text('My Reports')),
+      appBar: AppBar(
+        title: const Text('My Reports'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: AppColors.onSurfaceVariant),
+            onPressed: () async {
+              await authService.logout();
+              if (context.mounted) {
+                context.go('/login');
+              }
+            },
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.go('/report'),
+        child: const Icon(Icons.add),
+      ),
       body: Column(
         children: [
           // ─── Search by Tracking ID ───

@@ -62,10 +62,10 @@ class NotificationService {
         .collection(AppConstants.fcmTokensSubcollection)
         .doc(token)
         .set({
-      'token': token,
-      'lastUpdated': FieldValue.serverTimestamp(),
-      'platform': defaultTargetPlatform.toString(),
-    });
+          'token': token,
+          'lastUpdated': FieldValue.serverTimestamp(),
+          'platform': defaultTargetPlatform.toString(),
+        });
   }
 
   /// Subscribe user to topics based on role.

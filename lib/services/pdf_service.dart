@@ -53,20 +53,51 @@ class PdfService {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text('Report Filters Applied:',
-                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
+                  pw.Text(
+                    'Report Filters Applied:',
+                    style: pw.TextStyle(
+                      fontWeight: pw.FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                  ),
                   pw.SizedBox(height: 4),
                   pw.Row(
                     children: [
-                      pw.Expanded(child: pw.Text('Status: ${statusFilter ?? "All"}', style: const pw.TextStyle(fontSize: 9))),
-                      pw.Expanded(child: pw.Text('Priority: ${priorityFilter ?? "All"}', style: const pw.TextStyle(fontSize: 9))),
-                      pw.Expanded(child: pw.Text('Category: ${categoryFilter ?? "All"}', style: const pw.TextStyle(fontSize: 9))),
-                      pw.Expanded(child: pw.Text('District: ${districtFilter ?? "All"}', style: const pw.TextStyle(fontSize: 9))),
+                      pw.Expanded(
+                        child: pw.Text(
+                          'Status: ${statusFilter ?? "All"}',
+                          style: const pw.TextStyle(fontSize: 9),
+                        ),
+                      ),
+                      pw.Expanded(
+                        child: pw.Text(
+                          'Priority: ${priorityFilter ?? "All"}',
+                          style: const pw.TextStyle(fontSize: 9),
+                        ),
+                      ),
+                      pw.Expanded(
+                        child: pw.Text(
+                          'Category: ${categoryFilter ?? "All"}',
+                          style: const pw.TextStyle(fontSize: 9),
+                        ),
+                      ),
+                      pw.Expanded(
+                        child: pw.Text(
+                          'District: ${districtFilter ?? "All"}',
+                          style: const pw.TextStyle(fontSize: 9),
+                        ),
+                      ),
                     ],
                   ),
                   pw.SizedBox(height: 4),
-                  pw.Text('Total Cases Found: ${reports.length}',
-                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.teal)),
+                  pw.Text(
+                    'Total Cases Found: ${reports.length}',
+                    style: pw.TextStyle(
+                      fontWeight: pw.FontWeight.bold,
+                      fontSize: 10,
+                      color: PdfColors.teal,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -74,18 +105,34 @@ class PdfService {
 
             // Table of Reports
             pw.TableHelper.fromTextArray(
-              headers: ['Report ID', 'Category', 'Priority', 'District', 'Status', 'Date'],
-              data: reports.map((r) => [
-                r.reportId,
-                r.category,
-                r.priority,
-                r.district ?? '—',
-                r.status,
-                '${r.createdAt.day}/${r.createdAt.month}/${r.createdAt.year}',
-              ]).toList(),
+              headers: [
+                'Report ID',
+                'Category',
+                'Priority',
+                'District',
+                'Status',
+                'Date',
+              ],
+              data: reports
+                  .map(
+                    (r) => [
+                      r.reportId,
+                      r.category,
+                      r.priority,
+                      r.district ?? '—',
+                      r.status,
+                      '${r.createdAt.day}/${r.createdAt.month}/${r.createdAt.year}',
+                    ],
+                  )
+                  .toList(),
               border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
-              headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+                fontSize: 10,
+              ),
+              headerDecoration: const pw.BoxDecoration(
+                color: PdfColors.grey200,
+              ),
               cellStyle: const pw.TextStyle(fontSize: 9),
               cellAlignment: pw.Alignment.centerLeft,
             ),
@@ -97,7 +144,8 @@ class PdfService {
     // Show Print / Save Document UI
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
-      name: 'Nizhal_Incident_Report_${DateTime.now().millisecondsSinceEpoch}.pdf',
+      name:
+          'Nizhal_Incident_Report_${DateTime.now().millisecondsSinceEpoch}.pdf',
     );
   }
 }

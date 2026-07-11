@@ -127,24 +127,31 @@ class ReportTrackingScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       _InfoRow(
-                          label: 'Category',
-                          value: AppConstants.categoryLabels[report.category] ??
-                              report.category),
+                        label: 'Category',
+                        value:
+                            AppConstants.categoryLabels[report.category] ??
+                            report.category,
+                      ),
                       _InfoRow(
-                          label: 'Location',
-                          value: [report.city, report.district]
-                              .whereType<String>()
-                              .join(', ')),
+                        label: 'Location',
+                        value: [
+                          report.city,
+                          report.district,
+                        ].whereType<String>().join(', '),
+                      ),
                       _InfoRow(
-                          label: 'Photos',
-                          value: '${report.mediaCount} attached'),
+                        label: 'Photos',
+                        value: '${report.mediaCount} attached',
+                      ),
                       _InfoRow(
-                          label: 'Submitted',
-                          value: _formatDate(report.createdAt)),
+                        label: 'Submitted',
+                        value: _formatDate(report.createdAt),
+                      ),
                       if (report.resolvedAt != null)
                         _InfoRow(
-                            label: 'Resolved',
-                            value: _formatDate(report.resolvedAt!)),
+                          label: 'Resolved',
+                          value: _formatDate(report.resolvedAt!),
+                        ),
                     ],
                   ),
                 ),
@@ -207,27 +214,43 @@ class _StatusBadge extends StatelessWidget {
 
   Color get _color {
     switch (status) {
-      case 'submitted': return AppColors.statusSubmitted;
-      case 'under_review': return AppColors.statusUnderReview;
-      case 'assigned': return AppColors.statusAssigned;
-      case 'in_progress': return AppColors.statusInProgress;
-      case 'resolved': return AppColors.statusResolved;
-      case 'closed': return AppColors.statusClosed;
-      case 'fake': return AppColors.statusFake;
-      default: return AppColors.outline;
+      case 'submitted':
+        return AppColors.statusSubmitted;
+      case 'under_review':
+        return AppColors.statusUnderReview;
+      case 'assigned':
+        return AppColors.statusAssigned;
+      case 'in_progress':
+        return AppColors.statusInProgress;
+      case 'resolved':
+        return AppColors.statusResolved;
+      case 'closed':
+        return AppColors.statusClosed;
+      case 'fake':
+        return AppColors.statusFake;
+      default:
+        return AppColors.outline;
     }
   }
 
   String get _label {
     switch (status) {
-      case 'submitted': return 'Submitted';
-      case 'under_review': return 'Under Review';
-      case 'assigned': return 'Assigned';
-      case 'in_progress': return 'In Progress';
-      case 'resolved': return 'Resolved';
-      case 'closed': return 'Closed';
-      case 'fake': return 'Fake';
-      default: return status;
+      case 'submitted':
+        return 'Submitted';
+      case 'under_review':
+        return 'Under Review';
+      case 'assigned':
+        return 'Assigned';
+      case 'in_progress':
+        return 'In Progress';
+      case 'resolved':
+        return 'Resolved';
+      case 'closed':
+        return 'Closed';
+      case 'fake':
+        return 'Fake';
+      default:
+        return status;
     }
   }
 
@@ -258,11 +281,16 @@ class _PriorityBadge extends StatelessWidget {
 
   Color get _color {
     switch (priority) {
-      case 'critical': return AppColors.priorityCritical;
-      case 'high': return AppColors.priorityHigh;
-      case 'medium': return AppColors.priorityMedium;
-      case 'low': return AppColors.priorityLow;
-      default: return AppColors.outline;
+      case 'critical':
+        return AppColors.priorityCritical;
+      case 'high':
+        return AppColors.priorityHigh;
+      case 'medium':
+        return AppColors.priorityMedium;
+      case 'low':
+        return AppColors.priorityLow;
+      default:
+        return AppColors.outline;
     }
   }
 
@@ -312,10 +340,7 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               value.isEmpty ? '—' : value,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.onSurface,
-              ),
+              style: const TextStyle(fontSize: 13, color: AppColors.onSurface),
             ),
           ),
         ],
@@ -379,7 +404,9 @@ class _TimelineEntry extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: isActive ? AppColors.onSurface : AppColors.onSurfaceVariant,
+                      color: isActive
+                          ? AppColors.onSurface
+                          : AppColors.onSurfaceVariant,
                     ),
                   ),
                   if (note != null && note!.isNotEmpty)
@@ -387,7 +414,9 @@ class _TimelineEntry extends StatelessWidget {
                       note!,
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.7,
+                        ),
                       ),
                     ),
                   Text(
@@ -408,14 +437,22 @@ class _TimelineEntry extends StatelessWidget {
 
   String _statusLabel(String s) {
     switch (s) {
-      case 'submitted': return 'Report Submitted';
-      case 'under_review': return 'Under Review';
-      case 'assigned': return 'Assigned to Authority';
-      case 'in_progress': return 'Investigation In Progress';
-      case 'resolved': return 'Case Resolved';
-      case 'closed': return 'Case Closed';
-      case 'fake': return 'Marked as Fake';
-      default: return s;
+      case 'submitted':
+        return 'Report Submitted';
+      case 'under_review':
+        return 'Under Review';
+      case 'assigned':
+        return 'Assigned to Authority';
+      case 'in_progress':
+        return 'Investigation In Progress';
+      case 'resolved':
+        return 'Case Resolved';
+      case 'closed':
+        return 'Case Closed';
+      case 'fake':
+        return 'Marked as Fake';
+      default:
+        return s;
     }
   }
 }

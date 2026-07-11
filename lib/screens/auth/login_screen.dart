@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen>
         case 'authority':
           context.go('/authority');
         default:
-          context.go('/home');
+          context.go('/report');
       }
     } catch (e) {
       setState(() {
@@ -136,8 +136,9 @@ class _LoginScreenState extends State<LoginScreen>
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color:
-                                    AppColors.secondary.withValues(alpha: 0.25),
+                                color: AppColors.secondary.withValues(
+                                  alpha: 0.25,
+                                ),
                                 blurRadius: 20,
                                 spreadRadius: 2,
                               ),
@@ -169,8 +170,9 @@ class _LoginScreenState extends State<LoginScreen>
                           'Secure Anonymous Reporting',
                           style: TextStyle(
                             fontSize: 14,
-                            color: AppColors.onSurfaceVariant
-                                .withValues(alpha: 0.7),
+                            color: AppColors.onSurfaceVariant.withValues(
+                              alpha: 0.7,
+                            ),
                             letterSpacing: 1,
                           ),
                         ),
@@ -215,8 +217,11 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline,
-                              color: AppColors.error, size: 20),
+                          const Icon(
+                            Icons.error_outline,
+                            color: AppColors.error,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -239,7 +244,9 @@ class _LoginScreenState extends State<LoginScreen>
                     decoration: InputDecoration(
                       labelText: 'Email',
                       labelStyle: TextStyle(
-                        color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                       prefixIcon: const Icon(
                         Icons.email_outlined,
@@ -267,7 +274,9 @@ class _LoginScreenState extends State<LoginScreen>
                     decoration: InputDecoration(
                       labelText: 'Password',
                       labelStyle: TextStyle(
-                        color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                       prefixIcon: const Icon(
                         Icons.lock_outline,
@@ -281,8 +290,7 @@ class _LoginScreenState extends State<LoginScreen>
                           color: AppColors.onSurfaceVariant,
                         ),
                         onPressed: () {
-                          setState(
-                              () => _obscurePassword = !_obscurePassword);
+                          setState(() => _obscurePassword = !_obscurePassword);
                         },
                       ),
                     ),
@@ -359,8 +367,9 @@ class _LoginScreenState extends State<LoginScreen>
                       Text(
                         "Don't have an account? ",
                         style: TextStyle(
-                          color:
-                              AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+                          color: AppColors.onSurfaceVariant.withValues(
+                            alpha: 0.7,
+                          ),
                           fontSize: 14,
                         ),
                       ),
@@ -384,8 +393,9 @@ class _LoginScreenState extends State<LoginScreen>
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerHighest
-                          .withValues(alpha: 0.5),
+                      color: AppColors.surfaceContainerHighest.withValues(
+                        alpha: 0.5,
+                      ),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.divider),
                     ),
@@ -402,8 +412,9 @@ class _LoginScreenState extends State<LoginScreen>
                             'Your identity is encrypted and protected. All data is transmitted over secure channels.',
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.onSurfaceVariant
-                                  .withValues(alpha: 0.7),
+                              color: AppColors.onSurfaceVariant.withValues(
+                                alpha: 0.7,
+                              ),
                             ),
                           ),
                         ),
@@ -432,10 +443,7 @@ class _LoginScreenState extends State<LoginScreen>
           children: [
             const Text(
               'Enter your email to receive a password reset link.',
-              style: TextStyle(
-                color: AppColors.onSurfaceVariant,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -444,8 +452,10 @@ class _LoginScreenState extends State<LoginScreen>
               style: const TextStyle(color: AppColors.onSurface),
               decoration: const InputDecoration(
                 labelText: 'Email',
-                prefixIcon: Icon(Icons.email_outlined,
-                    color: AppColors.onSurfaceVariant),
+                prefixIcon: Icon(
+                  Icons.email_outlined,
+                  color: AppColors.onSurfaceVariant,
+                ),
               ),
             ),
           ],
@@ -460,8 +470,8 @@ class _LoginScreenState extends State<LoginScreen>
               if (resetEmailController.text.trim().isNotEmpty) {
                 try {
                   await context.read<AuthService>().sendPasswordResetEmail(
-                        resetEmailController.text.trim(),
-                      );
+                    resetEmailController.text.trim(),
+                  );
                   if (context.mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(

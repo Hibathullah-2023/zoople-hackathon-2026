@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
@@ -15,13 +17,38 @@ class AdminReportDetailScreen extends StatelessWidget {
   final String reportId;
   const AdminReportDetailScreen({super.key, required this.reportId});
 
+  Future<void> _launchMapDirections(ReportModel report) async {
+    Uri url;
+    if (report.location != null) {
+      url = Uri.parse(
+        "https://www.google.com/maps/dir/?api=1&destination=${report.location!.latitude},${report.location!.longitude}",
+      );
+    } else if (report.locationAddress != null &&
+        report.locationAddress!.isNotEmpty) {
+      url = Uri.parse(
+        "https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(report.locationAddress!)}",
+      );
+    } else {
+      return;
+    }
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final reportService = context.read<ReportService>();
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: const Text('Case Details')),
+      appBar: AppBar(
+        title: const Text('Case Details'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/admin'),
+        ),
+      ),
       body: StreamBuilder<ReportModel?>(
         stream: reportService.reportStream(reportId),
         builder: (context, snapshot) {
@@ -78,25 +105,54 @@ class AdminReportDetailScreen extends StatelessWidget {
                   label: 'CASE DETAILS',
                   child: Column(
                     children: [
-                      _DetailRow('Category',
-                          AppConstants.categoryLabels[report.category] ?? report.category),
-                      _DetailRow('Status',
-                          report.status.replaceAll('_', ' ').toUpperCase()),
+                      _DetailRow(
+                        'Category',
+                        AppConstants.categoryLabels[report.category] ??
+                            report.category,
+                      ),
+                      _DetailRow(
+                        'Status',
+                        report.status.replaceAll('_', ' ').toUpperCase(),
+                      ),
                       _DetailRow('District', report.district ?? '—'),
                       _DetailRow('City', report.city ?? '—'),
                       _DetailRow('Address', report.locationAddress ?? '—'),
                       _DetailRow('Photos', '${report.mediaCount} attached'),
                       _DetailRow(
-                          'Submitted',
-                          '${report.createdAt.day}/${report.createdAt.month}/${report.createdAt.year}'),
+                        'Submitted',
+                        '${report.createdAt.day}/${report.createdAt.month}/${report.createdAt.year}',
+                      ),
                       _DetailRow(
-                          'Anonymous',
-                          report.isAnonymous ? 'Yes' : 'No'),
+                        'Anonymous',
+                        report.isAnonymous ? 'Yes' : 'No',
+                      ),
                       if (report.priorityBypassed)
                         _DetailRow('Bypass', 'Auto-routed to authority'),
                     ],
                   ),
                 ),
+                if (report.location != null ||
+                    (report.locationAddress != null &&
+                        report.locationAddress!.isNotEmpty)) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _launchMapDirections(report),
+                      icon: const Icon(
+                        Icons.directions,
+                        color: AppColors.secondary,
+                      ),
+                      label: const Text(
+                        'Google Map Direction',
+                        style: TextStyle(color: AppColors.secondary),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.secondary),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
 
                 // ─── Keywords (for admin reference) ───
@@ -109,10 +165,11 @@ class AdminReportDetailScreen extends StatelessWidget {
                       children: report.keywords.map((k) {
                         return Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color:
-                                AppColors.error.withValues(alpha: 0.1),
+                            color: AppColors.error.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -142,16 +199,20 @@ class AdminReportDetailScreen extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.visibility_off,
-                          color: AppColors.secondary, size: 20),
+                      const Icon(
+                        Icons.visibility_off,
+                        color: AppColors.secondary,
+                        size: 20,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'Reporter identity is encrypted and hidden. Only the reporter can view their own identity.',
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.onSurfaceVariant
-                                .withValues(alpha: 0.7),
+                            color: AppColors.onSurfaceVariant.withValues(
+                              alpha: 0.7,
+                            ),
                           ),
                         ),
                       ),
@@ -169,8 +230,7 @@ class AdminReportDetailScreen extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () =>
-                            _showAssignDialog(context, report),
+                        onPressed: () => _showAssignDialog(context, report),
                         icon: const Icon(Icons.assignment_ind),
                         label: const Text('Assign to Authority'),
                       ),
@@ -181,20 +241,17 @@ class AdminReportDetailScreen extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          _showMarkFakeDialog(context, report),
-                      icon:
-                          const Icon(Icons.report, color: AppColors.error),
+                      onPressed: () => _showMarkFakeDialog(context, report),
+                      icon: const Icon(Icons.report, color: AppColors.error),
                       label: const Text(
                         'Mark as Fake',
                         style: TextStyle(color: AppColors.error),
                       ),
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(
-                            color:
-                                AppColors.error.withValues(alpha: 0.3)),
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                          color: AppColors.error.withValues(alpha: 0.3),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                     ),
                   ),
@@ -204,13 +261,11 @@ class AdminReportDetailScreen extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          _showStatusUpdateDialog(context, report),
+                      onPressed: () => _showStatusUpdateDialog(context, report),
                       icon: const Icon(Icons.update),
                       label: const Text('Update Status'),
                       style: OutlinedButton.styleFrom(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                     ),
                   ),
@@ -225,19 +280,27 @@ class AdminReportDetailScreen extends StatelessWidget {
 
   Color _priorityColor(String p) {
     switch (p) {
-      case 'critical': return AppColors.priorityCritical;
-      case 'high': return AppColors.priorityHigh;
-      case 'medium': return AppColors.priorityMedium;
-      case 'low': return AppColors.priorityLow;
-      default: return AppColors.outline;
+      case 'critical':
+        return AppColors.priorityCritical;
+      case 'high':
+        return AppColors.priorityHigh;
+      case 'medium':
+        return AppColors.priorityMedium;
+      case 'low':
+        return AppColors.priorityLow;
+      default:
+        return AppColors.outline;
     }
   }
 
   void _showAssignDialog(BuildContext context, ReportModel report) async {
-    final authorities = await FirebaseFirestore.instance
+    final query = FirebaseFirestore.instance
         .collection(AppConstants.authoritiesCollection)
-        .where('isActive', isEqualTo: true)
-        .get();
+        .where('isActive', isEqualTo: true);
+
+    final authorities = report.district != null
+        ? await query.where('jurisdiction', isEqualTo: report.district).get()
+        : await query.get();
 
     if (!context.mounted) return;
 
@@ -247,7 +310,11 @@ class AdminReportDetailScreen extends StatelessWidget {
 
     if (authorityList.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No active authorities available.')),
+        SnackBar(
+          content: Text(
+            'No active authorities available for jurisdiction: ${report.district ?? 'Unknown'}.',
+          ),
+        ),
       );
       return;
     }
@@ -265,25 +332,23 @@ class AdminReportDetailScreen extends StatelessWidget {
             itemBuilder: (_, i) {
               final auth = authorityList[i];
               return ListTile(
-                leading: const Icon(Icons.badge,
-                    color: AppColors.secondary),
+                leading: const Icon(Icons.badge, color: AppColors.secondary),
                 title: Text(auth.name),
                 subtitle: Text(
-                    '${auth.jurisdiction ?? 'General'} • ${auth.assignedCaseCount} cases'),
+                  '${auth.jurisdiction ?? 'General'} • ${auth.assignedCaseCount} cases',
+                ),
                 onTap: () async {
                   Navigator.pop(ctx);
                   final adminUid =
                       context.read<AuthService>().currentUser?.uid ?? '';
                   await context.read<ReportService>().assignToAuthority(
-                        reportId: report.reportId,
-                        authorityUid: auth.uid,
-                        adminUid: adminUid,
-                      );
+                    reportId: report.reportId,
+                    authorityUid: auth.uid,
+                    adminUid: adminUid,
+                  );
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content:
-                              Text('Assigned to ${auth.name}')),
+                      SnackBar(content: Text('Assigned to ${auth.name}')),
                     );
                   }
                 },
@@ -309,14 +374,12 @@ class AdminReportDetailScreen extends StatelessWidget {
           children: [
             const Text(
               'This will increment the reporter\'s fake count. At 3 fake reports, the user will be auto-suspended.',
-              style: TextStyle(
-                  color: AppColors.onSurfaceVariant, fontSize: 13),
+              style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13),
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: noteController,
-              decoration:
-                  const InputDecoration(labelText: 'Reason (optional)'),
+              decoration: const InputDecoration(labelText: 'Reason (optional)'),
               maxLines: 2,
             ),
           ],
@@ -327,28 +390,26 @@ class AdminReportDetailScreen extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style:
-                ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () async {
               Navigator.pop(ctx);
               final adminUid =
                   context.read<AuthService>().currentUser?.uid ?? '';
               await context.read<ReportService>().markAsFake(
-                    reportId: report.reportId,
-                    markedBy: adminUid,
-                    markedByRole: 'admin',
-                    note: noteController.text.trim().isNotEmpty
-                        ? noteController.text.trim()
-                        : null,
-                  );
+                reportId: report.reportId,
+                markedBy: adminUid,
+                markedByRole: 'admin',
+                note: noteController.text.trim().isNotEmpty
+                    ? noteController.text.trim()
+                    : null,
+              );
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Report marked as fake.')),
                 );
               }
             },
-            child: const Text('Confirm',
-                style: TextStyle(color: Colors.white)),
+            child: const Text('Confirm', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -375,11 +436,11 @@ class AdminReportDetailScreen extends StatelessWidget {
                   final adminUid =
                       context.read<AuthService>().currentUser?.uid ?? '';
                   await context.read<ReportService>().updateReportStatus(
-                        reportId: report.reportId,
-                        newStatus: val,
-                        changedBy: adminUid,
-                        changedByRole: 'admin',
-                      );
+                    reportId: report.reportId,
+                    newStatus: val,
+                    changedBy: adminUid,
+                    changedByRole: 'admin',
+                  );
                 },
               ),
             );
@@ -438,16 +499,19 @@ class _DetailRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 90,
-            child: Text(label,
-                style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.onSurfaceVariant
-                        .withValues(alpha: 0.7))),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+              ),
+            ),
           ),
           Expanded(
-            child: Text(value,
-                style: const TextStyle(
-                    fontSize: 13, color: AppColors.onSurface)),
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 13, color: AppColors.onSurface),
+            ),
           ),
         ],
       ),

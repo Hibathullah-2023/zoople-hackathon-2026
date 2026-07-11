@@ -3,7 +3,6 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/kerala_locations.dart';
-import '../../models/report_model.dart';
 import '../../services/report_service.dart';
 
 /// Interactive Google Map displaying incident density across Kerala.
@@ -34,17 +33,18 @@ class _KeralaMapScreenState extends State<KeralaMapScreen> {
   Future<void> _loadIncidentDensity() async {
     try {
       final reportService = context.read<ReportService>();
-      
+
       // Fetch all reports to aggregate location density
       // In a production app, we would query aggregated counts from Firestore.
       // For MVP, we stream/fetch reports and compute densities dynamically.
       reportService.allReportsStream().first.then((reports) {
         final Map<String, int> districtCounts = {};
-        
+
         // Count reports per district
         for (final report in reports) {
           if (report.district != null) {
-            districtCounts[report.district!] = (districtCounts[report.district!] ?? 0) + 1;
+            districtCounts[report.district!] =
+                (districtCounts[report.district!] ?? 0) + 1;
           }
         }
 
@@ -55,7 +55,7 @@ class _KeralaMapScreenState extends State<KeralaMapScreen> {
           final centerCoords = KeralaLocations.districtCenters[district];
           if (centerCoords != null) {
             final latLng = LatLng(centerCoords[0], centerCoords[1]);
-            
+
             // Set circle size and color based on density
             double radius = 10000 + (count * 2000).toDouble(); // meters
             if (radius > 40000) radius = 40000; // Cap max radius
@@ -139,13 +139,17 @@ class _KeralaMapScreenState extends State<KeralaMapScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Status: ${count >= 10 ? "Critical Density" : count >= 5 ? "High Density" : "Moderate Density"}',
+                'Status: ${count >= 10
+                    ? "Critical Density"
+                    : count >= 5
+                    ? "High Density"
+                    : "Moderate Density"}',
                 style: TextStyle(
                   color: count >= 10
                       ? AppColors.priorityCritical
                       : count >= 5
-                          ? AppColors.priorityHigh
-                          : AppColors.priorityLow,
+                      ? AppColors.priorityHigh
+                      : AppColors.priorityLow,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -184,7 +188,8 @@ class _KeralaMapScreenState extends State<KeralaMapScreen> {
         children: [
           GoogleMap(
             initialCameraPosition: const CameraPosition(
-              target: _kSimpleCenter, // fallback target if controller not loaded
+              target:
+                  _kSimpleCenter, // fallback target if controller not loaded
               zoom: 7.2,
             ),
             onMapCreated: (controller) {
@@ -199,11 +204,8 @@ class _KeralaMapScreenState extends State<KeralaMapScreen> {
             zoomControlsEnabled: false,
             myLocationButtonEnabled: false,
           ),
-          if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(),
-            ),
-          
+          if (_isLoading) const Center(child: CircularProgressIndicator()),
+
           // Map legend panel
           Positioned(
             bottom: 24,

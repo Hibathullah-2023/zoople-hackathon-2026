@@ -3,11 +3,194 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 
 import '../../constants/app_colors.dart';
+import '../../constants/app_constants.dart';
+import '../../models/report_model.dart';
 import '../../services/report_service.dart';
 
-/// Admin analytics dashboard with charts and trends.
+/// Admin analytics dashboard with charts and predictive trend analysis.
 class AdminAnalyticsScreen extends StatelessWidget {
   const AdminAnalyticsScreen({super.key});
+
+  Widget _buildPredictiveCard(List<ReportModel> reports) {
+    if (reports.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: const Center(
+          child: Text(
+            'No data for trend analysis yet.',
+            style: TextStyle(color: AppColors.onSurfaceVariant),
+          ),
+        ),
+      );
+    }
+
+    final sorted = List<ReportModel>.from(reports)
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+    final Map<String, int> monthlyCounts = {};
+    for (final r in sorted) {
+      final key =
+          "${r.createdAt.year}-${r.createdAt.month.toString().padLeft(2, '0')}";
+      monthlyCounts[key] = (monthlyCounts[key] ?? 0) + 1;
+    }
+
+    final months = monthlyCounts.keys.toList()..sort();
+    final counts = months.map((m) => monthlyCounts[m]!).toList();
+
+    double slope = 0.1;
+    double intercept = counts.isNotEmpty ? counts.last.toDouble() : 5.0;
+
+    if (counts.length >= 2) {
+      double sumX = 0;
+      double sumY = 0;
+      double sumXY = 0;
+      double sumXX = 0;
+      int n = counts.length;
+
+      for (int i = 0; i < n; i++) {
+        sumX += i;
+        sumY += counts[i];
+        sumXY += i * counts[i];
+        sumXX += i * i;
+      }
+
+      final denominator = (n * sumXX - sumX * sumX);
+      if (denominator != 0) {
+        slope = (n * sumXY - sumX * sumY) / denominator;
+        intercept = (sumY - slope * sumX) / n;
+      }
+    }
+
+    final nextIndex = counts.length.toDouble();
+    final predictedNext = (slope * nextIndex + intercept)
+        .clamp(1.0, 100.0)
+        .round();
+    final trendDirection = slope > 0.05
+        ? "Increasing"
+        : (slope < -0.05 ? "Decreasing" : "Stable");
+    final trendColor = slope > 0.05
+        ? AppColors.error
+        : (slope < -0.05 ? Colors.green : Colors.yellow);
+    final trendIcon = slope > 0.05
+        ? Icons.trending_up
+        : (slope < -0.05 ? Icons.trending_down : Icons.trending_flat);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.psychology, color: AppColors.secondary),
+              const SizedBox(width: 8),
+              const Text(
+                'Predictive Trend Analysis',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Based on reporting patterns over the last ${counts.length} active month(s), our linear regression model projects future incidents.',
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'TREND DIRECTION',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(trendIcon, color: trendColor, size: 18),
+                      const SizedBox(width: 4),
+                      Text(
+                        trendDirection,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: trendColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text(
+                    'PREDICTED (NEXT MONTH)',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '~ $predictedNext cases',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.secondary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              slope > 0.05
+                  ? '⚠️ Warning: Upward case projection. We recommend increasing surveillance and allocating additional authorities to rising hotspots.'
+                  : '✅ Notice: Containment trend is stable or decreasing. Continue supporting rehab centers and active local awareness campaigns.',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,17 +199,31 @@ class AdminAnalyticsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(title: const Text('Analytics')),
-      body: StreamBuilder<Map<String, dynamic>?>(
-        stream: reportService.globalAggregatesStream(),
+      body: StreamBuilder<List<ReportModel>>(
+        stream: reportService.allReportsStream(),
         builder: (context, snapshot) {
-          final data = snapshot.data;
-          final categoryBreakdown =
-              Map<String, int>.from(data?['categoryBreakdown'] ?? {});
-          final priorityBreakdown =
-              Map<String, int>.from(data?['priorityBreakdown'] ?? {});
-          final totalReports = data?['totalReports'] ?? 0;
-          final resolvedReports = data?['resolvedReports'] ?? 0;
-          final pendingReports = data?['pendingReports'] ?? 0;
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final reports = snapshot.data ?? [];
+          final categoryBreakdown = <String, int>{};
+          final priorityBreakdown = <String, int>{};
+          int totalReports = reports.length;
+          int resolvedReports = 0;
+          int pendingReports = 0;
+
+          for (final r in reports) {
+            categoryBreakdown[r.category] =
+                (categoryBreakdown[r.category] ?? 0) + 1;
+            priorityBreakdown[r.priority] =
+                (priorityBreakdown[r.priority] ?? 0) + 1;
+            if (r.status == 'resolved' || r.status == 'closed') {
+              resolvedReports++;
+            } else {
+              pendingReports++;
+            }
+          }
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
@@ -55,6 +252,12 @@ class AdminAnalyticsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+
+                const SizedBox(height: 24),
+
+                // ─── Predictive Analytics Card ───
+                _buildPredictiveCard(reports),
+
                 const SizedBox(height: 24),
 
                 // ─── Category Chart ───
@@ -76,9 +279,11 @@ class AdminAnalyticsScreen extends StatelessWidget {
                   ),
                   child: categoryBreakdown.isEmpty
                       ? const Center(
-                          child: Text('No data yet',
-                              style: TextStyle(
-                                  color: AppColors.onSurfaceVariant)))
+                          child: Text(
+                            'No data yet',
+                            style: TextStyle(color: AppColors.onSurfaceVariant),
+                          ),
+                        )
                       : PieChart(
                           PieChartData(
                             sections: _buildPieSections(categoryBreakdown),
@@ -93,6 +298,7 @@ class AdminAnalyticsScreen extends StatelessWidget {
                     spacing: 12,
                     runSpacing: 6,
                     children: categoryBreakdown.entries.map((e) {
+                      final label = AppConstants.categoryLabels[e.key] ?? e.key;
                       return Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -106,15 +312,17 @@ class AdminAnalyticsScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${e.key}: ${e.value}',
+                            '$label: ${e.value}',
                             style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.onSurfaceVariant),
+                              fontSize: 11,
+                              color: AppColors.onSurfaceVariant,
+                            ),
                           ),
                         ],
                       );
                     }).toList(),
                   ),
+
                 const SizedBox(height: 24),
 
                 // ─── Priority Chart ───
@@ -136,25 +344,26 @@ class AdminAnalyticsScreen extends StatelessWidget {
                   ),
                   child: priorityBreakdown.isEmpty
                       ? const Center(
-                          child: Text('No data yet',
-                              style: TextStyle(
-                                  color: AppColors.onSurfaceVariant)))
+                          child: Text(
+                            'No data yet',
+                            style: TextStyle(color: AppColors.onSurfaceVariant),
+                          ),
+                        )
                       : BarChart(
                           BarChartData(
-                            barGroups:
-                                _buildBarGroups(priorityBreakdown),
+                            barGroups: _buildBarGroups(priorityBreakdown),
                             borderData: FlBorderData(show: false),
                             gridData: const FlGridData(show: false),
                             titlesData: FlTitlesData(
                               topTitles: const AxisTitles(
-                                  sideTitles:
-                                      SideTitles(showTitles: false)),
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
                               rightTitles: const AxisTitles(
-                                  sideTitles:
-                                      SideTitles(showTitles: false)),
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
                               leftTitles: const AxisTitles(
-                                  sideTitles:
-                                      SideTitles(showTitles: false)),
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
                               bottomTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
@@ -163,18 +372,16 @@ class AdminAnalyticsScreen extends StatelessWidget {
                                       'Critical',
                                       'High',
                                       'Medium',
-                                      'Low'
+                                      'Low',
                                     ];
                                     if (value.toInt() < labels.length) {
                                       return Padding(
-                                        padding:
-                                            const EdgeInsets.only(top: 8),
+                                        padding: const EdgeInsets.only(top: 8),
                                         child: Text(
                                           labels[value.toInt()],
                                           style: const TextStyle(
                                             fontSize: 10,
-                                            color:
-                                                AppColors.onSurfaceVariant,
+                                            color: AppColors.onSurfaceVariant,
                                           ),
                                         ),
                                       );
@@ -231,8 +438,7 @@ class AdminAnalyticsScreen extends StatelessWidget {
             toY: count.toDouble(),
             color: colors[entry.key],
             width: 28,
-            borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(6)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
           ),
         ],
       );

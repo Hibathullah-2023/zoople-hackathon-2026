@@ -51,11 +51,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         height: 72,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color:
-                              AppColors.secondary.withValues(alpha: 0.15),
+                          color: AppColors.secondary.withValues(alpha: 0.15),
                           border: Border.all(
-                            color:
-                                AppColors.secondary.withValues(alpha: 0.3),
+                            color: AppColors.secondary.withValues(alpha: 0.3),
                             width: 2,
                           ),
                         ),
@@ -93,10 +91,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
-                          color:
-                              AppColors.secondary.withValues(alpha: 0.1),
+                          color: AppColors.secondary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -170,7 +169,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       side: BorderSide(
-                          color: AppColors.error.withValues(alpha: 0.3)),
+                        color: AppColors.error.withValues(alpha: 0.3),
+                      ),
                     ),
                   ),
                 ),
@@ -210,8 +210,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextFormField(
               controller: confirmPwController,
               obscureText: true,
-              decoration:
-                  const InputDecoration(labelText: 'Confirm New Password'),
+              decoration: const InputDecoration(
+                labelText: 'Confirm New Password',
+              ),
             ),
           ],
         ),
@@ -222,6 +223,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
+              if (currentPwController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter current password'),
+                  ),
+                );
+                return;
+              }
+              if (newPwController.text.length < 8) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('New password must be at least 8 characters'),
+                  ),
+                );
+                return;
+              }
+              if (newPwController.text.contains(' ')) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('New password must not contain spaces'),
+                  ),
+                );
+                return;
+              }
               if (newPwController.text != confirmPwController.text) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Passwords do not match')),
@@ -230,9 +255,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               }
               try {
                 await context.read<AuthService>().updatePassword(
-                      currentPassword: currentPwController.text,
-                      newPassword: newPwController.text,
-                    );
+                  currentPassword: currentPwController.text,
+                  newPassword: newPwController.text,
+                );
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -241,9 +266,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
+                  // Strip the "Exception: " prefix from error message
+                  final msg = e.toString().replaceAll('Exception: ', '');
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(msg)));
                 }
               }
             },
@@ -303,8 +330,9 @@ class _SettingCard extends StatelessWidget {
                         subtitle!,
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.onSurfaceVariant
-                              .withValues(alpha: 0.7),
+                          color: AppColors.onSurfaceVariant.withValues(
+                            alpha: 0.7,
+                          ),
                         ),
                       ),
                   ],
@@ -312,8 +340,11 @@ class _SettingCard extends StatelessWidget {
               ),
               if (trailing != null) trailing!,
               if (trailing == null && onTap != null)
-                const Icon(Icons.chevron_right,
-                    color: AppColors.onSurfaceVariant, size: 20),
+                const Icon(
+                  Icons.chevron_right,
+                  color: AppColors.onSurfaceVariant,
+                  size: 20,
+                ),
             ],
           ),
         ),

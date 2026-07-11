@@ -20,8 +20,7 @@ class ReportService {
     final dateStr =
         '${now.year.toString().substring(2)}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
     final random = Random.secure();
-    final seq =
-        random.nextInt(90000) + 10000; // 5-digit number
+    final seq = random.nextInt(90000) + 10000; // 5-digit number
     return '${AppConstants.reportIdPrefix}-$dateStr-$seq';
   }
 
@@ -48,10 +47,8 @@ class ReportService {
     final reportId = _generateReportId();
 
     // 2. Run auto-priority engine
-    final priority =
-        PriorityKeywords.calculatePriority(description, category);
-    final shouldBypass =
-        PriorityKeywords.shouldBypassAdmin(priority, category);
+    final priority = PriorityKeywords.calculatePriority(description, category);
+    final shouldBypass = PriorityKeywords.shouldBypassAdmin(priority, category);
     final keywords = PriorityKeywords.extractKeywords(description);
 
     // 3. Determine initial status and assignment
@@ -117,18 +114,21 @@ class ReportService {
     final statusLogRef = reportRef
         .collection(AppConstants.reportStatusLogSubcollection)
         .doc();
-    batch.set(statusLogRef, StatusLogModel(
-      logId: statusLogRef.id,
-      reportId: reportId,
-      previousStatus: '',
-      newStatus: initialStatus,
-      changedBy: shouldBypass ? 'SYSTEM' : reporterUid,
-      changedByRole: shouldBypass ? 'system' : 'user',
-      note: shouldBypass
-          ? 'Auto-assigned due to $priority priority'
-          : 'Report submitted',
-      changedAt: now,
-    ).toFirestore());
+    batch.set(
+      statusLogRef,
+      StatusLogModel(
+        logId: statusLogRef.id,
+        reportId: reportId,
+        previousStatus: '',
+        newStatus: initialStatus,
+        changedBy: shouldBypass ? 'SYSTEM' : reporterUid,
+        changedByRole: shouldBypass ? 'system' : 'user',
+        note: shouldBypass
+            ? 'Auto-assigned due to $priority priority'
+            : 'Report submitted',
+        changedAt: now,
+      ).toFirestore(),
+    );
 
     // Update authority's assigned case count if auto-assigned
     if (assignedAuthorityUid != null) {
@@ -144,20 +144,16 @@ class ReportService {
     final aggregateRef = _firestore
         .collection(AppConstants.aggregatesCollection)
         .doc('global');
-    batch.set(
-      aggregateRef,
-      {
-        'totalReports': FieldValue.increment(1),
-        'pendingReports': FieldValue.increment(1),
-        'categoryBreakdown': {category: FieldValue.increment(1)},
-        'priorityBreakdown': {priority: FieldValue.increment(1)},
-        'statusBreakdown': {initialStatus: FieldValue.increment(1)},
-        if (district != null)
-          'districtBreakdown': {district: FieldValue.increment(1)},
-        'lastUpdated': Timestamp.now(),
-      },
-      SetOptions(merge: true),
-    );
+    batch.set(aggregateRef, {
+      'totalReports': FieldValue.increment(1),
+      'pendingReports': FieldValue.increment(1),
+      'categoryBreakdown': {category: FieldValue.increment(1)},
+      'priorityBreakdown': {priority: FieldValue.increment(1)},
+      'statusBreakdown': {initialStatus: FieldValue.increment(1)},
+      if (district != null)
+        'districtBreakdown': {district: FieldValue.increment(1)},
+      'lastUpdated': Timestamp.now(),
+    }, SetOptions(merge: true));
 
     await batch.commit();
 
@@ -166,7 +162,8 @@ class ReportService {
 
   /// Find an available authority, optionally matching jurisdiction
   Future<Map<String, dynamic>?> _findAvailableAuthority(
-      String? district) async {
+    String? district,
+  ) async {
     Query query = _firestore
         .collection(AppConstants.authoritiesCollection)
         .where('isActive', isEqualTo: true)
@@ -227,8 +224,10 @@ class ReportService {
       query = query.where('district', isEqualTo: districtFilter);
     }
 
-    return query.snapshots().map((snapshot) =>
-        snapshot.docs.map((doc) => ReportModel.fromFirestore(doc)).toList());
+    return query.snapshots().map(
+      (snapshot) =>
+          snapshot.docs.map((doc) => ReportModel.fromFirestore(doc)).toList(),
+    );
   }
 
   /// Stream reports assigned to a specific authority
@@ -236,10 +235,14 @@ class ReportService {
     return _firestore
         .collection(AppConstants.reportsCollection)
         .where('assignedAuthorityUid', isEqualTo: authorityUid)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => ReportModel.fromFirestore(doc)).toList());
+        .map((snapshot) {
+          final list = snapshot.docs
+              .map((doc) => ReportModel.fromFirestore(doc))
+              .toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   /// Stream reports submitted by a specific user (via identity sub-collection)
@@ -251,8 +254,11 @@ class ReportService {
         .collection(AppConstants.reportsCollection)
         .where('anonymousId', isEqualTo: '') // This won't work directly
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => ReportModel.fromFirestore(doc)).toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => ReportModel.fromFirestore(doc))
+              .toList(),
+        );
   }
 
   /// Get reports by user - using a separate user_reports collection
@@ -265,8 +271,7 @@ class ReportService {
         .orderBy('createdAt', descending: true)
         .get();
 
-    final reportIds =
-        userReportsSnap.docs.map((doc) => doc.id).toList();
+    final reportIds = userReportsSnap.docs.map((doc) => doc.id).toList();
 
     if (reportIds.isEmpty) return [];
 
@@ -274,13 +279,16 @@ class ReportService {
     final reports = <ReportModel>[];
     for (var i = 0; i < reportIds.length; i += 10) {
       final batch = reportIds.sublist(
-          i, i + 10 > reportIds.length ? reportIds.length : i + 10);
+        i,
+        i + 10 > reportIds.length ? reportIds.length : i + 10,
+      );
       final snapshot = await _firestore
           .collection(AppConstants.reportsCollection)
           .where(FieldPath.documentId, whereIn: batch)
           .get();
       reports.addAll(
-          snapshot.docs.map((doc) => ReportModel.fromFirestore(doc)));
+        snapshot.docs.map((doc) => ReportModel.fromFirestore(doc)),
+      );
     }
 
     reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -314,9 +322,11 @@ class ReportService {
         .collection(AppConstants.reportStatusLogSubcollection)
         .orderBy('changedAt', descending: false)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => StatusLogModel.fromFirestore(doc))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => StatusLogModel.fromFirestore(doc))
+              .toList(),
+        );
   }
 
   // ─── Update Report Status ───
@@ -395,9 +405,7 @@ class ReportService {
     final authorityRef = _firestore
         .collection(AppConstants.authoritiesCollection)
         .doc(authorityUid);
-    batch.update(authorityRef, {
-      'assignedCaseCount': FieldValue.increment(1),
-    });
+    batch.update(authorityRef, {'assignedCaseCount': FieldValue.increment(1)});
 
     // Add status log
     final logRef = reportRef

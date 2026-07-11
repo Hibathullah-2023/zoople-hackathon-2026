@@ -14,7 +14,8 @@ class UserShell extends StatelessWidget {
     if (location.startsWith('/home')) return 0;
     if (location.startsWith('/track')) return 1;
     if (location.startsWith('/report')) return 2;
-    if (location.startsWith('/profile')) return 3;
+    if (location.startsWith('/rehab')) return 3;
+    if (location.startsWith('/profile')) return 4;
     return 0;
   }
 
@@ -60,10 +61,17 @@ class UserShell extends StatelessWidget {
                   isAccent: true,
                 ),
                 _NavItem(
+                  icon: Icons.psychology_outlined,
+                  activeIcon: Icons.psychology,
+                  label: 'Rehab',
+                  isActive: index == 3,
+                  onTap: () => context.go('/rehab/chat'),
+                ),
+                _NavItem(
                   icon: Icons.person_outline,
                   activeIcon: Icons.person,
                   label: 'Profile',
-                  isActive: index == 3,
+                  isActive: index == 4,
                   onTap: () => context.go('/profile'),
                 ),
               ],

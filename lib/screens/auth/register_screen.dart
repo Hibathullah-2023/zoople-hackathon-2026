@@ -61,14 +61,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // Show success and navigate
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Account created! Please verify your email.',
-          ),
+          content: Text('Account created! Please verify your email.'),
           backgroundColor: AppColors.secondaryContainer,
         ),
       );
 
-      context.go('/home');
+      context.go('/report');
     } catch (e) {
       setState(() {
         _errorMessage = _formatError(e.toString());
@@ -102,14 +100,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
           setState(() => _errorMessage = 'Please fill all required fields.');
           return false;
         }
-        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+')
-            .hasMatch(_emailController.text.trim())) {
+        if (!RegExp(
+          r'^[^@]+@[^@]+\.[^@]+',
+        ).hasMatch(_emailController.text.trim())) {
           setState(() => _errorMessage = 'Enter a valid email address.');
           return false;
         }
         if (_passwordController.text.length < 8) {
           setState(
-              () => _errorMessage = 'Password must be at least 8 characters.');
+            () => _errorMessage = 'Password must be at least 8 characters.',
+          );
+          return false;
+        }
+        if (_passwordController.text.contains(' ')) {
+          setState(() => _errorMessage = 'Password must not contain spaces.');
           return false;
         }
         if (_passwordController.text != _confirmPasswordController.text) {
@@ -119,19 +123,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
         setState(() => _errorMessage = null);
         return true;
       case 1:
-        final clean =
-            _aadhaarController.text.replaceAll(RegExp(r'[\s\-]'), '');
+        final clean = _aadhaarController.text.replaceAll(RegExp(r'[\s\-]'), '');
         if (clean.length != 12 || !RegExp(r'^\d{12}$').hasMatch(clean)) {
-          setState(
-              () => _errorMessage = 'Aadhaar must be exactly 12 digits.');
+          setState(() => _errorMessage = 'Aadhaar must be exactly 12 digits.');
           return false;
         }
         setState(() => _errorMessage = null);
         return true;
       case 2:
         if (!_termsAccepted) {
-          setState(() =>
-              _errorMessage = 'You must accept the Terms & Conditions.');
+          setState(
+            () => _errorMessage = 'You must accept the Terms & Conditions.',
+          );
           return false;
         }
         setState(() => _errorMessage = null);
@@ -192,7 +195,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         value: (_currentStep + 1) / 3,
                         backgroundColor: AppColors.surfaceContainerHighest,
                         valueColor: const AlwaysStoppedAnimation<Color>(
-                            AppColors.tertiary),
+                          AppColors.tertiary,
+                        ),
                         minHeight: 4,
                       ),
                     ),
@@ -236,8 +240,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       padding: const EdgeInsets.all(12),
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color:
-                            AppColors.errorContainer.withValues(alpha: 0.15),
+                        color: AppColors.errorContainer.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: AppColors.error.withValues(alpha: 0.3),
@@ -245,8 +248,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline,
-                              color: AppColors.error, size: 20),
+                          const Icon(
+                            Icons.error_outline,
+                            color: AppColors.error,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -285,9 +291,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             )
                           : Text(
-                              _currentStep == 2
-                                  ? 'Create Account'
-                                  : 'Continue',
+                              _currentStep == 2 ? 'Create Account' : 'Continue',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -350,8 +354,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             labelStyle: TextStyle(
               color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
             ),
-            prefixIcon: const Icon(Icons.person_outline,
-                color: AppColors.onSurfaceVariant),
+            prefixIcon: const Icon(
+              Icons.person_outline,
+              color: AppColors.onSurfaceVariant,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -366,8 +372,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             labelStyle: TextStyle(
               color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
             ),
-            prefixIcon: const Icon(Icons.email_outlined,
-                color: AppColors.onSurfaceVariant),
+            prefixIcon: const Icon(
+              Icons.email_outlined,
+              color: AppColors.onSurfaceVariant,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -382,8 +390,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             labelStyle: TextStyle(
               color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
             ),
-            prefixIcon: const Icon(Icons.lock_outline,
-                color: AppColors.onSurfaceVariant),
+            prefixIcon: const Icon(
+              Icons.lock_outline,
+              color: AppColors.onSurfaceVariant,
+            ),
             suffixIcon: IconButton(
               icon: Icon(
                 _obscurePassword
@@ -412,8 +422,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             labelStyle: TextStyle(
               color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
             ),
-            prefixIcon: const Icon(Icons.lock_outline,
-                color: AppColors.onSurfaceVariant),
+            prefixIcon: const Icon(
+              Icons.lock_outline,
+              color: AppColors.onSurfaceVariant,
+            ),
             suffixIcon: IconButton(
               icon: Icon(
                 _obscureConfirmPassword
@@ -422,7 +434,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 color: AppColors.onSurfaceVariant,
               ),
               onPressed: () => setState(
-                  () => _obscureConfirmPassword = !_obscureConfirmPassword),
+                () => _obscureConfirmPassword = !_obscureConfirmPassword,
+              ),
             ),
           ),
         ),
@@ -469,8 +482,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             labelStyle: TextStyle(
               color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
             ),
-            prefixIcon: const Icon(Icons.credit_card,
-                color: AppColors.onSurfaceVariant),
+            prefixIcon: const Icon(
+              Icons.credit_card,
+              color: AppColors.onSurfaceVariant,
+            ),
             hintText: 'XXXX XXXX XXXX',
             hintStyle: TextStyle(
               color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
@@ -517,9 +532,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               _buildSecurityPoint(
                 'SHA-512 hashing with 100,000 iterations protects your data',
               ),
-              _buildSecurityPoint(
-                'Used only for duplicate account prevention',
-              ),
+              _buildSecurityPoint('Used only for duplicate account prevention'),
               _buildSecurityPoint(
                 'Admin and authorities cannot see your Aadhaar',
               ),
@@ -636,10 +649,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const Expanded(
                   child: Text(
                     'I have read and agree to the Terms & Conditions and Privacy Policy',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.onSurface,
-                    ),
+                    style: TextStyle(fontSize: 14, color: AppColors.onSurface),
                   ),
                 ),
               ],

@@ -38,10 +38,11 @@ class AdminManageAuthoritiesScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.badge,
-                      size: 64,
-                      color: AppColors.onSurfaceVariant
-                          .withValues(alpha: 0.3)),
+                  Icon(
+                    Icons.badge,
+                    size: 64,
+                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+                  ),
                   const SizedBox(height: 12),
                   const Text(
                     'No authorities yet',
@@ -51,7 +52,9 @@ class AdminManageAuthoritiesScreen extends StatelessWidget {
                   const Text(
                     'Tap + to add an authority',
                     style: TextStyle(
-                        color: AppColors.onSurfaceVariant, fontSize: 12),
+                      color: AppColors.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -75,6 +78,7 @@ class AdminManageAuthoritiesScreen extends StatelessWidget {
   void _showAddAuthorityDialog(BuildContext context) {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
+    final passwordController = TextEditingController();
     final badgeController = TextEditingController();
     String? selectedJurisdiction;
     String? selectedSpecialization;
@@ -92,31 +96,44 @@ class AdminManageAuthoritiesScreen extends StatelessWidget {
                 TextFormField(
                   controller: nameController,
                   decoration: const InputDecoration(
-                      labelText: 'Name *',
-                      prefixIcon: Icon(Icons.person_outline)),
+                    labelText: 'Name *',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
-                      labelText: 'Email *',
-                      prefixIcon: Icon(Icons.email_outlined)),
+                    labelText: 'Email *',
+                    prefixIcon: Icon(Icons.email_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Password *',
+                    prefixIcon: Icon(Icons.lock_outlined),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: badgeController,
                   decoration: const InputDecoration(
-                      labelText: 'Badge ID',
-                      prefixIcon: Icon(Icons.badge_outlined)),
+                    labelText: 'Badge ID',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: selectedJurisdiction,
                   dropdownColor: AppColors.surfaceContainerHigh,
                   decoration: const InputDecoration(
-                      labelText: 'Jurisdiction',
-                      prefixIcon: Icon(Icons.map_outlined)),
+                    labelText: 'Jurisdiction',
+                    prefixIcon: Icon(Icons.map_outlined),
+                  ),
                   items: KeralaLocations.districts.map((d) {
                     return DropdownMenuItem(value: d, child: Text(d));
                   }).toList(),
@@ -128,16 +145,19 @@ class AdminManageAuthoritiesScreen extends StatelessWidget {
                   value: selectedSpecialization,
                   dropdownColor: AppColors.surfaceContainerHigh,
                   decoration: const InputDecoration(
-                      labelText: 'Specialization',
-                      prefixIcon: Icon(Icons.work_outline)),
+                    labelText: 'Specialization',
+                    prefixIcon: Icon(Icons.work_outline),
+                  ),
                   items: const [
                     DropdownMenuItem(
-                        value: 'narcotics', child: Text('Narcotics')),
+                      value: 'narcotics',
+                      child: Text('Narcotics'),
+                    ),
+                    DropdownMenuItem(value: 'patrol', child: Text('Patrol')),
                     DropdownMenuItem(
-                        value: 'patrol', child: Text('Patrol')),
-                    DropdownMenuItem(
-                        value: 'investigation',
-                        child: Text('Investigation')),
+                      value: 'investigation',
+                      child: Text('Investigation'),
+                    ),
                   ],
                   onChanged: (val) =>
                       setDialogState(() => selectedSpecialization = val),
@@ -153,10 +173,12 @@ class AdminManageAuthoritiesScreen extends StatelessWidget {
             ElevatedButton(
               onPressed: () async {
                 if (nameController.text.trim().isEmpty ||
-                    emailController.text.trim().isEmpty) {
+                    emailController.text.trim().isEmpty ||
+                    passwordController.text.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                        content: Text('Name and email are required.')),
+                      content: Text('Name, email, and password are required.'),
+                    ),
                   );
                   return;
                 }
@@ -164,29 +186,29 @@ class AdminManageAuthoritiesScreen extends StatelessWidget {
                 Navigator.pop(ctx);
 
                 try {
-                  await context
-                      .read<AuthService>()
-                      .createAuthorityAccount(
-                        email: emailController.text.trim(),
-                        name: nameController.text.trim(),
-                        badgeId: badgeController.text.trim().isNotEmpty
-                            ? badgeController.text.trim()
-                            : null,
-                        jurisdiction: selectedJurisdiction,
-                        specialization: selectedSpecialization,
-                      );
+                  await context.read<AuthService>().createAuthorityAccount(
+                    email: emailController.text.trim(),
+                    name: nameController.text.trim(),
+                    password: passwordController.text,
+                    badgeId: badgeController.text.trim().isNotEmpty
+                        ? badgeController.text.trim()
+                        : null,
+                    jurisdiction: selectedJurisdiction,
+                    specialization: selectedSpecialization,
+                  );
 
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text('Authority account created.')),
+                        content: Text('Authority account created.'),
+                      ),
                     );
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: $e')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Error: $e')));
                   }
                 }
               },
@@ -264,7 +286,9 @@ class _AuthorityCard extends StatelessWidget {
                       Text(
                         authority.jurisdiction!,
                         style: const TextStyle(
-                            fontSize: 11, color: AppColors.tertiary),
+                          fontSize: 11,
+                          color: AppColors.tertiary,
+                        ),
                       ),
                       const SizedBox(width: 8),
                     ],
@@ -272,8 +296,9 @@ class _AuthorityCard extends StatelessWidget {
                       '${authority.assignedCaseCount} cases',
                       style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.onSurfaceVariant
-                            .withValues(alpha: 0.6),
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                     ),
                   ],
@@ -297,13 +322,11 @@ class _AuthorityCard extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: (authority.isActive
-                      ? AppColors.secondary
-                      : AppColors.error)
-                  .withValues(alpha: 0.1),
+              color:
+                  (authority.isActive ? AppColors.secondary : AppColors.error)
+                      .withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
@@ -325,7 +348,9 @@ class _AuthorityCard extends StatelessWidget {
   /// Show edit dialog pre-filled with authority's current data
   void _showEditDialog(BuildContext context) {
     final nameController = TextEditingController(text: authority.name);
-    final badgeController = TextEditingController(text: authority.badgeId ?? '');
+    final badgeController = TextEditingController(
+      text: authority.badgeId ?? '',
+    );
     String? selectedJurisdiction = authority.jurisdiction;
     String? selectedSpecialization = authority.specialization;
     bool isActive = authority.isActive;
@@ -343,23 +368,26 @@ class _AuthorityCard extends StatelessWidget {
                 TextFormField(
                   controller: nameController,
                   decoration: const InputDecoration(
-                      labelText: 'Name',
-                      prefixIcon: Icon(Icons.person_outline)),
+                    labelText: 'Name',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: badgeController,
                   decoration: const InputDecoration(
-                      labelText: 'Badge ID',
-                      prefixIcon: Icon(Icons.badge_outlined)),
+                    labelText: 'Badge ID',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: selectedJurisdiction,
                   dropdownColor: AppColors.surfaceContainerHigh,
                   decoration: const InputDecoration(
-                      labelText: 'Jurisdiction (District)',
-                      prefixIcon: Icon(Icons.map_outlined)),
+                    labelText: 'Jurisdiction (District)',
+                    prefixIcon: Icon(Icons.map_outlined),
+                  ),
                   items: KeralaLocations.districts.map((d) {
                     return DropdownMenuItem(value: d, child: Text(d));
                   }).toList(),
@@ -371,16 +399,19 @@ class _AuthorityCard extends StatelessWidget {
                   initialValue: selectedSpecialization,
                   dropdownColor: AppColors.surfaceContainerHigh,
                   decoration: const InputDecoration(
-                      labelText: 'Specialization',
-                      prefixIcon: Icon(Icons.work_outline)),
+                    labelText: 'Specialization',
+                    prefixIcon: Icon(Icons.work_outline),
+                  ),
                   items: const [
                     DropdownMenuItem(
-                        value: 'narcotics', child: Text('Narcotics')),
+                      value: 'narcotics',
+                      child: Text('Narcotics'),
+                    ),
+                    DropdownMenuItem(value: 'patrol', child: Text('Patrol')),
                     DropdownMenuItem(
-                        value: 'patrol', child: Text('Patrol')),
-                    DropdownMenuItem(
-                        value: 'investigation',
-                        child: Text('Investigation')),
+                      value: 'investigation',
+                      child: Text('Investigation'),
+                    ),
                   ],
                   onChanged: (val) =>
                       setDialogState(() => selectedSpecialization = val),
@@ -390,8 +421,7 @@ class _AuthorityCard extends StatelessWidget {
                   title: const Text('Active Status'),
                   value: isActive,
                   activeColor: AppColors.secondary,
-                  onChanged: (val) =>
-                      setDialogState(() => isActive = val),
+                  onChanged: (val) => setDialogState(() => isActive = val),
                 ),
               ],
             ),
@@ -406,15 +436,15 @@ class _AuthorityCard extends StatelessWidget {
                 Navigator.pop(ctx);
                 try {
                   await context.read<AuthService>().updateAuthority(
-                        authorityDocId: authority.uid,
-                        name: nameController.text.trim(),
-                        badgeId: badgeController.text.trim().isNotEmpty
-                            ? badgeController.text.trim()
-                            : null,
-                        jurisdiction: selectedJurisdiction,
-                        specialization: selectedSpecialization,
-                        isActive: isActive,
-                      );
+                    authorityDocId: authority.uid,
+                    name: nameController.text.trim(),
+                    badgeId: badgeController.text.trim().isNotEmpty
+                        ? badgeController.text.trim()
+                        : null,
+                    jurisdiction: selectedJurisdiction,
+                    specialization: selectedSpecialization,
+                    isActive: isActive,
+                  );
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Authority updated.')),
@@ -422,9 +452,9 @@ class _AuthorityCard extends StatelessWidget {
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: $e')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Error: $e')));
                   }
                 }
               },
@@ -452,15 +482,13 @@ class _AuthorityCard extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await context
-                    .read<AuthService>()
-                    .deleteAuthority(authority.uid);
+                await context.read<AuthService>().deleteAuthority(
+                  authority.uid,
+                );
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Authority deleted.')),
@@ -468,9 +496,9 @@ class _AuthorityCard extends StatelessWidget {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               }
             },
@@ -481,4 +509,3 @@ class _AuthorityCard extends StatelessWidget {
     );
   }
 }
-

@@ -48,15 +48,14 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    _textOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _textController, curve: Curves.easeIn),
-    );
-    _textSlide = Tween<Offset>(
-      begin: const Offset(0, 0.5),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _textController, curve: Curves.easeOutCubic),
-    );
+    _textOpacity = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _textController, curve: Curves.easeIn));
+    _textSlide = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero)
+        .animate(
+          CurvedAnimation(parent: _textController, curve: Curves.easeOutCubic),
+        );
 
     // Pulse animation for the shield glow
     _pulseController = AnimationController(
@@ -113,7 +112,7 @@ class _SplashScreenState extends State<SplashScreen>
       case 'authority':
         context.go('/authority');
       default:
-        context.go('/home');
+        context.go('/report');
     }
   }
 
@@ -169,16 +168,14 @@ class _SplashScreenState extends State<SplashScreen>
                             gradient: const LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [
-                                AppColors.secondary,
-                                Color(0xFF0F766E),
-                              ],
+                              colors: [AppColors.secondary, Color(0xFF0F766E)],
                             ),
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
                               BoxShadow(
-                                color:
-                                    AppColors.secondary.withValues(alpha: 0.3),
+                                color: AppColors.secondary.withValues(
+                                  alpha: 0.3,
+                                ),
                                 blurRadius: 30,
                                 spreadRadius: 5,
                               ),
@@ -226,7 +223,9 @@ class _SplashScreenState extends State<SplashScreen>
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.7,
+                        ),
                         letterSpacing: 3,
                       ),
                     ),

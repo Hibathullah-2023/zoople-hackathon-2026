@@ -99,17 +99,16 @@ class AuthorityCaseDetailScreen extends StatelessWidget {
                   label: 'CASE DETAILS',
                   child: Column(
                     children: [
-                      _DetailRow('Category',
-                          AppConstants.categoryLabels[report.category] ??
-                              report.category),
+                      _DetailRow(
+                        'Category',
+                        AppConstants.categoryLabels[report.category] ??
+                            report.category,
+                      ),
                       _DetailRow('District', report.district ?? '—'),
                       _DetailRow('City', report.city ?? '—'),
-                      _DetailRow(
-                          'Address', report.locationAddress ?? '—'),
-                      _DetailRow(
-                          'Photos', '${report.mediaCount} attached'),
-                      _DetailRow('Submitted',
-                          _formatDate(report.createdAt)),
+                      _DetailRow('Address', report.locationAddress ?? '—'),
+                      _DetailRow('Photos', '${report.mediaCount} attached'),
+                      _DetailRow('Submitted', _formatDate(report.createdAt)),
                     ],
                   ),
                 ),
@@ -125,18 +124,20 @@ class AuthorityCaseDetailScreen extends StatelessWidget {
                       children: report.keywords.map((k) {
                         return Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: AppColors.error
-                                .withValues(alpha: 0.1),
+                            color: AppColors.error.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             k,
                             style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.error,
-                                fontWeight: FontWeight.w600),
+                              fontSize: 11,
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         );
                       }).toList(),
@@ -162,22 +163,19 @@ class AuthorityCaseDetailScreen extends StatelessWidget {
                     if (logs.isEmpty) {
                       return const Text(
                         'No updates yet.',
-                        style: TextStyle(
-                            color: AppColors.onSurfaceVariant),
+                        style: TextStyle(color: AppColors.onSurfaceVariant),
                       );
                     }
 
                     return Column(
                       children: logs.map((log) {
                         return Padding(
-                          padding:
-                              const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.only(bottom: 8),
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: AppColors.surfaceContainer,
-                              borderRadius:
-                                  BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
                               children: [
@@ -186,8 +184,7 @@ class AuthorityCaseDetailScreen extends StatelessWidget {
                                   height: 8,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: _statusColor(
-                                        log.newStatus),
+                                    color: _statusColor(log.newStatus),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -202,10 +199,8 @@ class AuthorityCaseDetailScreen extends StatelessWidget {
                                             .toUpperCase(),
                                         style: const TextStyle(
                                           fontSize: 12,
-                                          fontWeight:
-                                              FontWeight.w600,
-                                          color: AppColors
-                                              .onSurface,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.onSurface,
                                         ),
                                       ),
                                       if (log.note != null)
@@ -213,10 +208,8 @@ class AuthorityCaseDetailScreen extends StatelessWidget {
                                           log.note!,
                                           style: TextStyle(
                                             fontSize: 11,
-                                            color: AppColors
-                                                .onSurfaceVariant
-                                                .withValues(
-                                                    alpha: 0.7),
+                                            color: AppColors.onSurfaceVariant
+                                                .withValues(alpha: 0.7),
                                           ),
                                         ),
                                     ],
@@ -226,8 +219,7 @@ class AuthorityCaseDetailScreen extends StatelessWidget {
                                   _formatTime(log.changedAt),
                                   style: TextStyle(
                                     fontSize: 10,
-                                    color: AppColors
-                                        .onSurfaceVariant
+                                    color: AppColors.onSurfaceVariant
                                         .withValues(alpha: 0.5),
                                   ),
                                 ),
@@ -260,22 +252,19 @@ class AuthorityCaseDetailScreen extends StatelessWidget {
                           );
                         },
                         icon: const Icon(Icons.play_arrow),
-                        label:
-                            const Text('Start Investigation'),
+                        label: const Text('Start Investigation'),
                       ),
                     ),
 
                   // Resolve
-                  if (report.status ==
-                      AppConstants.statusInProgress) ...[
+                  if (report.status == AppConstants.statusInProgress) ...[
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           await reportService.updateReportStatus(
                             reportId: report.reportId,
-                            newStatus:
-                                AppConstants.statusResolved,
+                            newStatus: AppConstants.statusResolved,
                             changedBy: uid,
                             changedByRole: 'authority',
                             note: 'Case resolved',
@@ -299,31 +288,24 @@ class AuthorityCaseDetailScreen extends StatelessWidget {
                         final confirmed = await showDialog<bool>(
                           context: context,
                           builder: (ctx) => AlertDialog(
-                            backgroundColor:
-                                AppColors.surfaceContainerHigh,
-                            title: const Text(
-                                'Mark as Fake?'),
+                            backgroundColor: AppColors.surfaceContainerHigh,
+                            title: const Text('Mark as Fake?'),
                             content: const Text(
                               'This will increment the reporter\'s fake count. At 3 strikes, auto-suspension.',
                             ),
                             actions: [
                               TextButton(
-                                onPressed: () =>
-                                    Navigator.pop(ctx, false),
+                                onPressed: () => Navigator.pop(ctx, false),
                                 child: const Text('Cancel'),
                               ),
                               ElevatedButton(
-                                style:
-                                    ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      AppColors.error,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.error,
                                 ),
-                                onPressed: () =>
-                                    Navigator.pop(ctx, true),
+                                onPressed: () => Navigator.pop(ctx, true),
                                 child: const Text(
                                   'Confirm',
-                                  style: TextStyle(
-                                      color: Colors.white),
+                                  style: TextStyle(color: Colors.white),
                                 ),
                               ),
                             ],
@@ -338,17 +320,16 @@ class AuthorityCaseDetailScreen extends StatelessWidget {
                           );
                         }
                       },
-                      icon: const Icon(Icons.report,
-                          color: AppColors.error),
-                      label: const Text('Mark as Fake',
-                          style:
-                              TextStyle(color: AppColors.error)),
+                      icon: const Icon(Icons.report, color: AppColors.error),
+                      label: const Text(
+                        'Mark as Fake',
+                        style: TextStyle(color: AppColors.error),
+                      ),
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(
-                            color: AppColors.error
-                                .withValues(alpha: 0.3)),
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 14),
+                          color: AppColors.error.withValues(alpha: 0.3),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                     ),
                   ),
@@ -363,24 +344,37 @@ class AuthorityCaseDetailScreen extends StatelessWidget {
 
   Color _priorityColor(String p) {
     switch (p) {
-      case 'critical': return AppColors.priorityCritical;
-      case 'high': return AppColors.priorityHigh;
-      case 'medium': return AppColors.priorityMedium;
-      case 'low': return AppColors.priorityLow;
-      default: return AppColors.outline;
+      case 'critical':
+        return AppColors.priorityCritical;
+      case 'high':
+        return AppColors.priorityHigh;
+      case 'medium':
+        return AppColors.priorityMedium;
+      case 'low':
+        return AppColors.priorityLow;
+      default:
+        return AppColors.outline;
     }
   }
 
   Color _statusColor(String s) {
     switch (s) {
-      case 'submitted': return AppColors.statusSubmitted;
-      case 'under_review': return AppColors.statusUnderReview;
-      case 'assigned': return AppColors.statusAssigned;
-      case 'in_progress': return AppColors.statusInProgress;
-      case 'resolved': return AppColors.statusResolved;
-      case 'closed': return AppColors.statusClosed;
-      case 'fake': return AppColors.statusFake;
-      default: return AppColors.outline;
+      case 'submitted':
+        return AppColors.statusSubmitted;
+      case 'under_review':
+        return AppColors.statusUnderReview;
+      case 'assigned':
+        return AppColors.statusAssigned;
+      case 'in_progress':
+        return AppColors.statusInProgress;
+      case 'resolved':
+        return AppColors.statusResolved;
+      case 'closed':
+        return AppColors.statusClosed;
+      case 'fake':
+        return AppColors.statusFake;
+      default:
+        return AppColors.outline;
     }
   }
 
@@ -410,13 +404,15 @@ class _Section extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.secondary,
-                letterSpacing: 0.5,
-              )),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.secondary,
+              letterSpacing: 0.5,
+            ),
+          ),
           const SizedBox(height: 8),
           child,
         ],
@@ -439,16 +435,19 @@ class _DetailRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 80,
-            child: Text(label,
-                style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.onSurfaceVariant
-                        .withValues(alpha: 0.7))),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+              ),
+            ),
           ),
           Expanded(
-            child: Text(value,
-                style: const TextStyle(
-                    fontSize: 13, color: AppColors.onSurface)),
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 13, color: AppColors.onSurface),
+            ),
           ),
         ],
       ),
@@ -464,8 +463,7 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),

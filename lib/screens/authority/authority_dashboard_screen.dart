@@ -28,6 +28,17 @@ class AuthorityDashboardScreen extends StatelessWidget {
             const Text('My Assigned Cases'),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: AppColors.onSurfaceVariant),
+            onPressed: () async {
+              await context.read<AuthService>().logout();
+              if (context.mounted) {
+                context.go('/login');
+              }
+            },
+          ),
+        ],
       ),
       body: StreamBuilder<List<ReportModel>>(
         stream: reportService.authorityReportsStream(uid),
@@ -42,10 +53,11 @@ class AuthorityDashboardScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.assignment,
-                      size: 64,
-                      color: AppColors.onSurfaceVariant
-                          .withValues(alpha: 0.3)),
+                  Icon(
+                    Icons.assignment,
+                    size: 64,
+                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+                  ),
                   const SizedBox(height: 12),
                   const Text(
                     'No cases assigned',
@@ -64,8 +76,7 @@ class AuthorityDashboardScreen extends StatelessWidget {
               final report = reports[index];
               return _CaseCard(
                 report: report,
-                onTap: () =>
-                    context.go('/authority/case/${report.reportId}'),
+                onTap: () => context.go('/authority/case/${report.reportId}'),
               );
             },
           );
@@ -83,21 +94,31 @@ class _CaseCard extends StatelessWidget {
 
   Color _priorityColor(String p) {
     switch (p) {
-      case 'critical': return AppColors.priorityCritical;
-      case 'high': return AppColors.priorityHigh;
-      case 'medium': return AppColors.priorityMedium;
-      case 'low': return AppColors.priorityLow;
-      default: return AppColors.outline;
+      case 'critical':
+        return AppColors.priorityCritical;
+      case 'high':
+        return AppColors.priorityHigh;
+      case 'medium':
+        return AppColors.priorityMedium;
+      case 'low':
+        return AppColors.priorityLow;
+      default:
+        return AppColors.outline;
     }
   }
 
   Color _statusColor(String s) {
     switch (s) {
-      case 'assigned': return AppColors.statusAssigned;
-      case 'in_progress': return AppColors.statusInProgress;
-      case 'resolved': return AppColors.statusResolved;
-      case 'fake': return AppColors.statusFake;
-      default: return AppColors.outline;
+      case 'assigned':
+        return AppColors.statusAssigned;
+      case 'in_progress':
+        return AppColors.statusInProgress;
+      case 'resolved':
+        return AppColors.statusResolved;
+      case 'fake':
+        return AppColors.statusFake;
+      default:
+        return AppColors.outline;
     }
   }
 
@@ -136,10 +157,13 @@ class _CaseCard extends StatelessWidget {
                   const Spacer(),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2),
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
-                      color: _statusColor(report.status)
-                          .withValues(alpha: 0.15),
+                      color: _statusColor(
+                        report.status,
+                      ).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -155,8 +179,7 @@ class _CaseCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                AppConstants.categoryLabels[report.category] ??
-                    report.category,
+                AppConstants.categoryLabels[report.category] ?? report.category,
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -177,21 +200,28 @@ class _CaseCard extends StatelessWidget {
               Row(
                 children: [
                   if (report.district != null) ...[
-                    const Icon(Icons.location_on,
-                        size: 14, color: AppColors.onSurfaceVariant),
+                    const Icon(
+                      Icons.location_on,
+                      size: 14,
+                      color: AppColors.onSurfaceVariant,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       '${report.city ?? report.district}',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.onSurfaceVariant
-                            .withValues(alpha: 0.6),
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                     ),
                   ],
                   const Spacer(),
-                  const Icon(Icons.chevron_right,
-                      size: 18, color: AppColors.onSurfaceVariant),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 18,
+                    color: AppColors.onSurfaceVariant,
+                  ),
                 ],
               ),
             ],

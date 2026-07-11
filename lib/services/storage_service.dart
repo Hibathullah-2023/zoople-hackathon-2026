@@ -19,7 +19,7 @@ class StorageService {
     // 1. Strip EXIF metadata by re-encoding
     final bytes = await photoFile.readAsBytes();
     final decodedImage = img.decodeImage(bytes);
-    
+
     if (decodedImage == null) {
       throw Exception('Failed to decode image. Invalid format.');
     }

@@ -41,7 +41,7 @@ class AadhaarService {
   }
 
   /// Hash an Aadhaar number using SHA-512 with Salt + Pepper + PBKDF2.
-  /// 
+  ///
   /// Process:
   /// 1. Clean the Aadhaar number (remove spaces/dashes)
   /// 2. Combine: aadhaar + salt + pepper
@@ -50,13 +50,13 @@ class AadhaarService {
   Future<String> hashAadhaar(String aadhaarNumber, String salt) async {
     // Clean the input
     final cleanAadhaar = aadhaarNumber.replaceAll(RegExp(r'[\s\-]'), '');
-    
+
     // Get pepper
     final pepper = await _getPepper();
-    
+
     // Combine: aadhaar + salt + pepper
     final input = '$cleanAadhaar$salt$pepper';
-    
+
     // PBKDF2 with SHA-512
     Uint8List hash = Uint8List.fromList(utf8.encode(input));
     for (int i = 0; i < AppConstants.pbkdf2Iterations; i++) {
@@ -64,33 +64,23 @@ class AadhaarService {
         sha512.convert([...hash, ...utf8.encode(salt)]).bytes,
       );
     }
-    
+
     return hash.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 
-  /// Check if an Aadhaar number is already registered.
-  /// Returns true if a duplicate is found.
-  Future<bool> isDuplicate(String aadhaarNumber) async {
-    // Get all users' aadhaar hashes and salts
-    final querySnapshot = await _firestore
-        .collection(AppConstants.usersCollection)
-        .get();
+  /// Calculate a consistent global hash for duplicate checking across devices
+  Future<String> getAadhaarDuplicateHash(String aadhaarNumber) async {
+    final cleanAadhaar = aadhaarNumber.replaceAll(RegExp(r'[\s\-]'), '');
+    const globalPepper = 'nizhal_global_pepper_2026';
+    final input = '$cleanAadhaar$globalPepper';
+    return sha256.convert(utf8.encode(input)).toString();
+  }
 
-    for (final doc in querySnapshot.docs) {
-      final data = doc.data();
-      final storedHash = data['aadhaarHash'] as String?;
-      final storedSalt = data['aadhaarSalt'] as String?;
-      
-      if (storedHash == null || storedSalt == null) continue;
-      
-      // Hash the input with the same salt and compare
-      final inputHash = await hashAadhaar(aadhaarNumber, storedSalt);
-      if (inputHash == storedHash) {
-        return true; // Duplicate found
-      }
-    }
-    
-    return false;
+  /// Check if an Aadhaar number is already registered using the dedicated aadhaar_hashes collection.
+  Future<bool> isDuplicate(String aadhaarNumber) async {
+    final hash = await getAadhaarDuplicateHash(aadhaarNumber);
+    final doc = await _firestore.collection('aadhaar_hashes').doc(hash).get();
+    return doc.exists;
   }
 
   /// Validate Aadhaar number format (12 digits).
