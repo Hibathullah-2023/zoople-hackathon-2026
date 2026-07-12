@@ -8,10 +8,19 @@ import '../../constants/kerala_locations.dart';
 import '../../models/authority_model.dart';
 import '../../services/auth_service.dart';
 
-/// Admin manage authorities screen — CRUD authorities.
-/// Admin-only: creates authority accounts.
-class AdminManageAuthoritiesScreen extends StatelessWidget {
+/// Admin manage authorities screen — CRUD authorities with jurisdiction/specialization filters.
+class AdminManageAuthoritiesScreen extends StatefulWidget {
   const AdminManageAuthoritiesScreen({super.key});
+
+  @override
+  State<AdminManageAuthoritiesScreen> createState() =>
+      _AdminManageAuthoritiesScreenState();
+}
+
+class _AdminManageAuthoritiesScreenState
+    extends State<AdminManageAuthoritiesScreen> {
+  String? _jurisdictionFilter;
+  String? _specializationFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -22,55 +31,178 @@ class AdminManageAuthoritiesScreen extends StatelessWidget {
         onPressed: () => _showAddAuthorityDialog(context),
         child: const Icon(Icons.person_add),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection(AppConstants.authoritiesCollection)
-            .orderBy('createdAt', descending: true)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final docs = snapshot.data?.docs ?? [];
-          if (docs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.badge,
-                    size: 64,
-                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'No authorities yet',
-                    style: TextStyle(color: AppColors.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Tap + to add an authority',
-                    style: TextStyle(
-                      color: AppColors.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.separated(
+      body: Column(
+        children: [
+          // ─── Inline Filters for Jurisdiction & Specialization ───
+          Padding(
             padding: const EdgeInsets.all(16),
-            itemCount: docs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final auth = AuthorityModel.fromFirestore(docs[index]);
-              return _AuthorityCard(authority: auth);
-            },
-          );
-        },
+            child: Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _jurisdictionFilter,
+                    dropdownColor: AppColors.surfaceContainerHigh,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    decoration: const InputDecoration(
+                      labelText: 'Jurisdiction',
+                      labelStyle: TextStyle(
+                        color: AppColors.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
+                    ),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text(
+                          'All Jurisdictions',
+                          style: TextStyle(color: AppColors.onSurfaceVariant),
+                        ),
+                      ),
+                      ...KeralaLocations.districts.map((d) {
+                        return DropdownMenuItem<String>(
+                          value: d,
+                          child: Text(
+                            d,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        );
+                      }),
+                    ],
+                    onChanged: (val) {
+                      setState(() {
+                        _jurisdictionFilter = val;
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _specializationFilter,
+                    dropdownColor: AppColors.surfaceContainerHigh,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    decoration: const InputDecoration(
+                      labelText: 'Specialization',
+                      labelStyle: TextStyle(
+                        color: AppColors.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
+                    ),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text(
+                          'All Specializations',
+                          style: TextStyle(color: AppColors.onSurfaceVariant),
+                        ),
+                      ),
+                      const DropdownMenuItem<String>(
+                        value: 'narcotics',
+                        child: Text(
+                          'Narcotics',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      const DropdownMenuItem<String>(
+                        value: 'patrol',
+                        child: Text(
+                          'Patrol',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      const DropdownMenuItem<String>(
+                        value: 'investigation',
+                        child: Text(
+                          'Investigation',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      setState(() {
+                        _specializationFilter = val;
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection(AppConstants.authoritiesCollection)
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final docs = snapshot.data?.docs ?? [];
+                final authorities = docs
+                    .map((d) => AuthorityModel.fromFirestore(d))
+                    .toList();
+
+                // Apply local filtering
+                final filteredAuthorities = authorities.where((auth) {
+                  if (_jurisdictionFilter != null &&
+                      auth.jurisdiction != _jurisdictionFilter)
+                    return false;
+                  if (_specializationFilter != null &&
+                      auth.specialization != _specializationFilter)
+                    return false;
+                  return true;
+                }).toList();
+
+                if (filteredAuthorities.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.badge,
+                          size: 64,
+                          color: AppColors.onSurfaceVariant.withValues(
+                            alpha: 0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'No matching authorities found',
+                          style: TextStyle(color: AppColors.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.separated(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  itemCount: filteredAuthorities.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    return _AuthorityCard(
+                      authority: filteredAuthorities[index],
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -122,7 +254,7 @@ class AdminManageAuthoritiesScreen extends StatelessWidget {
                 TextFormField(
                   controller: badgeController,
                   decoration: const InputDecoration(
-                    labelText: 'Badge ID',
+                    labelText: 'Badge ID (e.g. KP-9882)',
                     prefixIcon: Icon(Icons.badge_outlined),
                   ),
                 ),
@@ -131,7 +263,7 @@ class AdminManageAuthoritiesScreen extends StatelessWidget {
                   value: selectedJurisdiction,
                   dropdownColor: AppColors.surfaceContainerHigh,
                   decoration: const InputDecoration(
-                    labelText: 'Jurisdiction',
+                    labelText: 'Jurisdiction (District)',
                     prefixIcon: Icon(Icons.map_outlined),
                   ),
                   items: KeralaLocations.districts.map((d) {
@@ -170,21 +302,36 @@ class AdminManageAuthoritiesScreen extends StatelessWidget {
               onPressed: () => Navigator.pop(ctx),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            FilledButton(
               onPressed: () async {
                 if (nameController.text.trim().isEmpty ||
                     emailController.text.trim().isEmpty ||
                     passwordController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(ctx).showSnackBar(
                     const SnackBar(
-                      content: Text('Name, email, and password are required.'),
+                      content: Text('Please fill all required fields.'),
+                    ),
+                  );
+                  return;
+                }
+                if (passwordController.text.length < 8) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content: Text('Password must be at least 8 characters.'),
+                    ),
+                  );
+                  return;
+                }
+                if (passwordController.text.contains(' ')) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content: Text('Password must not contain spaces.'),
                     ),
                   );
                   return;
                 }
 
                 Navigator.pop(ctx);
-
                 try {
                   await context.read<AuthService>().createAuthorityAccount(
                     email: emailController.text.trim(),
@@ -196,7 +343,6 @@ class AdminManageAuthoritiesScreen extends StatelessWidget {
                     jurisdiction: selectedJurisdiction,
                     specialization: selectedSpecialization,
                   );
-
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -306,6 +452,26 @@ class _AuthorityCard extends StatelessWidget {
               ],
             ),
           ),
+          // ─── Active/Inactive Switch Toggle ───
+          Switch(
+            value: authority.isActive,
+            activeColor: AppColors.secondary,
+            onChanged: (val) async {
+              try {
+                await context.read<AuthService>().updateAuthority(
+                  authorityDocId: authority.uid,
+                  isActive: val,
+                );
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to update status: $e')),
+                  );
+                }
+              }
+            },
+          ),
+          const SizedBox(width: 4),
           // ─── Edit Button ───
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 20),
@@ -319,26 +485,6 @@ class _AuthorityCard extends StatelessWidget {
             color: AppColors.error,
             tooltip: 'Delete Authority',
             onPressed: () => _showDeleteConfirmation(context),
-          ),
-          const SizedBox(width: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color:
-                  (authority.isActive ? AppColors.secondary : AppColors.error)
-                      .withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              authority.isActive ? 'ACTIVE' : 'INACTIVE',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: authority.isActive
-                    ? AppColors.secondary
-                    : AppColors.error,
-              ),
-            ),
           ),
         ],
       ),
@@ -382,7 +528,7 @@ class _AuthorityCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: selectedJurisdiction,
+                  value: selectedJurisdiction,
                   dropdownColor: AppColors.surfaceContainerHigh,
                   decoration: const InputDecoration(
                     labelText: 'Jurisdiction (District)',
@@ -396,7 +542,7 @@ class _AuthorityCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: selectedSpecialization,
+                  value: selectedSpecialization,
                   dropdownColor: AppColors.surfaceContainerHigh,
                   decoration: const InputDecoration(
                     labelText: 'Specialization',

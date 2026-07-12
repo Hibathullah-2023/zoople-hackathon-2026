@@ -37,7 +37,8 @@ class AppRouter {
       debugLogDiagnostics: true,
       redirect: (context, state) async {
         final user = FirebaseAuth.instance.currentUser;
-        final isOnAuthRoute = state.matchedLocation == '/login' ||
+        final isOnAuthRoute =
+            state.matchedLocation == '/login' ||
             state.matchedLocation == '/register' ||
             state.matchedLocation == '/terms' ||
             state.matchedLocation == '/splash';
@@ -69,7 +70,7 @@ class AppRouter {
           path: '/terms',
           builder: (context, state) => const TermsScreen(),
         ),
-        
+
         // ─── Shared Routes ───
         GoRoute(
           path: '/map',
@@ -119,6 +120,10 @@ class AppRouter {
           routes: [
             GoRoute(
               path: '/admin',
+              builder: (context, state) => const AdminAnalyticsScreen(),
+            ),
+            GoRoute(
+              path: '/admin/cases',
               builder: (context, state) => const AdminDashboardScreen(),
             ),
             GoRoute(
@@ -128,13 +133,8 @@ class AppRouter {
               ),
             ),
             GoRoute(
-              path: '/admin/analytics',
-              builder: (context, state) => const AdminAnalyticsScreen(),
-            ),
-            GoRoute(
               path: '/admin/authorities',
-              builder: (context, state) =>
-                  const AdminManageAuthoritiesScreen(),
+              builder: (context, state) => const AdminManageAuthoritiesScreen(),
             ),
             GoRoute(
               path: '/admin/profile',

@@ -166,36 +166,37 @@ class ReportService {
   ) async {
     Query query = _firestore
         .collection(AppConstants.authoritiesCollection)
-        .where('isActive', isEqualTo: true)
-        .orderBy('assignedCaseCount')
-        .limit(1);
+        .where('isActive', isEqualTo: true);
 
+    final snapshot = await query.get();
+    if (snapshot.docs.isEmpty) return null;
+
+    final docs = snapshot.docs;
+
+    // Filter by district/jurisdiction locally if specified
+    List<QueryDocumentSnapshot> matchingDocs = docs;
     if (district != null) {
-      // Try to find one in the same jurisdiction first
-      final jurisdictionQuery = _firestore
-          .collection(AppConstants.authoritiesCollection)
-          .where('isActive', isEqualTo: true)
-          .where('jurisdiction', isEqualTo: district)
-          .orderBy('assignedCaseCount')
-          .limit(1);
-
-      final jurisdictionResult = await jurisdictionQuery.get();
-      if (jurisdictionResult.docs.isNotEmpty) {
-        final doc = jurisdictionResult.docs.first;
+      final districtDocs = docs.where((doc) {
         final data = doc.data() as Map<String, dynamic>;
-        return {'uid': doc.id, ...data};
+        return data['jurisdiction'] == district;
+      }).toList();
+      if (districtDocs.isNotEmpty) {
+        matchingDocs = districtDocs;
       }
     }
 
-    // Fall back to any available authority
-    final result = await query.get();
-    if (result.docs.isNotEmpty) {
-      final doc = result.docs.first;
-      final data = doc.data() as Map<String, dynamic>;
-      return {'uid': doc.id, ...data};
-    }
+    // Sort by assignedCaseCount ascending locally
+    matchingDocs.sort((a, b) {
+      final dataA = a.data() as Map<String, dynamic>;
+      final dataB = b.data() as Map<String, dynamic>;
+      final countA = dataA['assignedCaseCount'] ?? 0;
+      final countB = dataB['assignedCaseCount'] ?? 0;
+      return countA.compareTo(countB);
+    });
 
-    return null;
+    final bestDoc = matchingDocs.first;
+    final bestData = bestDoc.data() as Map<String, dynamic>;
+    return {'uid': bestDoc.id, ...bestData};
   }
 
   // ─── Read Reports ───

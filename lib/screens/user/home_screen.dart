@@ -100,7 +100,10 @@ class _HomeScreenState extends State<HomeScreen> {
         final position =
             await Geolocator.getLastKnownPosition() ??
             await Geolocator.getCurrentPosition(
-              desiredAccuracy: LocationAccuracy.low,
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.low,
+                timeLimit: Duration(seconds: 10),
+              ),
             );
         final placemarks = await placemarkFromCoordinates(
           position.latitude,

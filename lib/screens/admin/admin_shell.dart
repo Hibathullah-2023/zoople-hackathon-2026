@@ -11,10 +11,10 @@ class AdminShell extends StatelessWidget {
 
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    if (location == '/admin') return 0;
-    if (location.startsWith('/admin/analytics')) return 1;
+    if (location == '/admin/cases') return 1;
     if (location.startsWith('/admin/authorities')) return 2;
     if (location.startsWith('/admin/profile')) return 3;
+    if (location == '/admin') return 0;
     return 0;
   }
 
@@ -38,16 +38,16 @@ class AdminShell extends StatelessWidget {
                 _NavItem(
                   icon: Icons.dashboard_outlined,
                   activeIcon: Icons.dashboard,
-                  label: 'Cases',
+                  label: 'Dashboard',
                   isActive: index == 0,
                   onTap: () => context.go('/admin'),
                 ),
                 _NavItem(
-                  icon: Icons.analytics_outlined,
-                  activeIcon: Icons.analytics,
-                  label: 'Analytics',
+                  icon: Icons.assignment_outlined,
+                  activeIcon: Icons.assignment,
+                  label: 'Cases',
                   isActive: index == 1,
-                  onTap: () => context.go('/admin/analytics'),
+                  onTap: () => context.go('/admin/cases'),
                 ),
                 _NavItem(
                   icon: Icons.badge_outlined,

@@ -12,11 +12,15 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() && getUserData().role == 'admin';
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        getUserData().role == 'admin';
     }
 
     function isAuthority() {
-      return isAuthenticated() && getUserData().role == 'authority';
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        getUserData().role == 'authority';
     }
 
     function isReporter(reportId) {
@@ -74,7 +78,12 @@ service cloud.firestore {
       // Status Log subcollection
       match /statusLog/{logId} {
         allow read: if isAdmin() || isReporter(reportId) || (isAuthority() && get(/databases/$(database)/documents/reports/$(reportId)).data.assignedAuthorityUid == request.auth.uid);
-        allow create: if isAuthenticated() && (request.resource.data.changedBy == request.auth.uid || isAdmin() || isAuthority());
+        allow create: if isAuthenticated() && (
+          request.resource.data.changedBy == request.auth.uid || 
+          request.resource.data.changedBy == 'SYSTEM' || 
+          isAdmin() || 
+          isAuthority()
+        );
         allow update, delete: if false;
       }
     }

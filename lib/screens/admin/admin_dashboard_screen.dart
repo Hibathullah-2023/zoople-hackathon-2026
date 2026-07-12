@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:fl_chart/fl_chart.dart';
 
 import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
+import '../../constants/kerala_locations.dart';
 import '../../models/report_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/report_service.dart';
@@ -23,124 +23,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   String? _statusFilter;
   String? _priorityFilter;
   String? _categoryFilter;
+  String? _districtFilter;
   List<ReportModel> _allReports = [];
   List<ReportModel> _currentReports = [];
-
-  Widget _buildCurveGraph(List<ReportModel> reports) {
-    if (reports.isEmpty) {
-      return Container(
-        height: 180,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainer,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.divider),
-        ),
-        child: const Center(
-          child: Text(
-            'No data available for graph',
-            style: TextStyle(color: AppColors.onSurfaceVariant),
-          ),
-        ),
-      );
-    }
-
-    final sortedReports = List<ReportModel>.from(reports)
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-
-    final Map<String, int> dailyCounts = {};
-    for (final r in sortedReports) {
-      final dateKey =
-          "${r.createdAt.year}-${r.createdAt.month.toString().padLeft(2, '0')}-${r.createdAt.day.toString().padLeft(2, '0')}";
-      dailyCounts[dateKey] = (dailyCounts[dateKey] ?? 0) + 1;
-    }
-
-    final dailyEntries = dailyCounts.entries.toList();
-    final lastEntries = dailyEntries.length > 7
-        ? dailyEntries.sublist(dailyEntries.length - 7)
-        : dailyEntries;
-
-    final List<FlSpot> spots = [];
-    for (int i = 0; i < lastEntries.length; i++) {
-      spots.add(FlSpot(i.toDouble(), lastEntries[i].value.toDouble()));
-    }
-
-    return Container(
-      height: 180,
-      padding: const EdgeInsets.only(right: 20, left: 10, top: 15, bottom: 10),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: LineChart(
-        LineChartData(
-          gridData: const FlGridData(show: false),
-          titlesData: FlTitlesData(
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  final idx = value.toInt();
-                  if (idx >= 0 && idx < lastEntries.length) {
-                    final dateStr = lastEntries[idx].key;
-                    final parts = dateStr.split('-');
-                    if (parts.length == 3) {
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Text(
-                          "${parts[1]}/${parts[2]}",
-                          style: const TextStyle(
-                            fontSize: 9,
-                            color: AppColors.onSurfaceVariant,
-                          ),
-                        ),
-                      );
-                    }
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: const TextStyle(
-                      fontSize: 9,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots.isEmpty ? [const FlSpot(0, 0)] : spots,
-              isCurved: true,
-              color: AppColors.secondary,
-              barWidth: 3,
-              isStrokeCapRound: true,
-              dotData: const FlDotData(show: true),
-              belowBarData: BarAreaData(
-                show: true,
-                color: AppColors.secondary.withValues(alpha: 0.15),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -151,13 +36,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            const Icon(
-              Icons.admin_panel_settings,
-              color: AppColors.primary,
-              size: 22,
-            ),
+            const Icon(Icons.assignment, color: AppColors.primary, size: 22),
             const SizedBox(width: 8),
-            const Text('Admin Dashboard'),
+            const Text('Cases'),
           ],
         ),
         actions: [
@@ -175,6 +56,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 statusFilter: _statusFilter,
                 priorityFilter: _priorityFilter,
                 categoryFilter: _categoryFilter,
+                districtFilter: _districtFilter,
               );
             },
           ),
@@ -206,188 +88,223 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               return false;
             if (_categoryFilter != null && r.category != _categoryFilter)
               return false;
+            if (_districtFilter != null && r.district != _districtFilter)
+              return false;
             return true;
           }).toList();
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ─── Curve Graph (Reporting by Time) ───
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Cases Reported over Time',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildCurveGraph(_allReports),
-                  ],
-                ),
-              ),
-
               const SizedBox(height: 12),
 
-              // ─── Always Visible Inline Dropdown Filters ───
+              // ─── Always Visible Inline Dropdown Filters (2 Rows) ───
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
+                child: Column(
                   children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _statusFilter,
-                        dropdownColor: AppColors.surfaceContainerHigh,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText: 'Status',
-                          labelStyle: TextStyle(
-                            color: AppColors.onSurfaceVariant,
-                            fontSize: 11,
-                          ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 8,
-                          ),
-                        ),
-                        items: [
-                          const DropdownMenuItem<String>(
-                            value: null,
-                            child: Text(
-                              'All Status',
-                              style: TextStyle(
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: _statusFilter,
+                            dropdownColor: AppColors.surfaceContainerHigh,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Status',
+                              labelStyle: TextStyle(
                                 color: AppColors.onSurfaceVariant,
+                                fontSize: 11,
+                              ),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 8,
                               ),
                             ),
-                          ),
-                          ...AppConstants.statusPipeline.map((s) {
-                            return DropdownMenuItem<String>(
-                              value: s,
-                              child: Text(
-                                s.replaceAll('_', ' ').toUpperCase(),
-                                style: const TextStyle(color: Colors.white),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: null,
+                                child: Text(
+                                  'All Status',
+                                  style: TextStyle(
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                ),
                               ),
-                            );
-                          }),
-                        ],
-                        onChanged: (val) {
-                          setState(() {
-                            _statusFilter = val;
-                          });
-                        },
-                      ),
+                              ...AppConstants.statusPipeline.map((s) {
+                                return DropdownMenuItem<String>(
+                                  value: s,
+                                  child: Text(
+                                    s.replaceAll('_', ' ').toUpperCase(),
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                );
+                              }),
+                            ],
+                            onChanged: (val) {
+                              setState(() {
+                                _statusFilter = val;
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: _priorityFilter,
+                            dropdownColor: AppColors.surfaceContainerHigh,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Priority',
+                              labelStyle: TextStyle(
+                                color: AppColors.onSurfaceVariant,
+                                fontSize: 11,
+                              ),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 8,
+                              ),
+                            ),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: null,
+                                child: Text(
+                                  'All Priority',
+                                  style: TextStyle(
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                              ...AppConstants.priorities.map((p) {
+                                return DropdownMenuItem<String>(
+                                  value: p,
+                                  child: Text(
+                                    p.toUpperCase(),
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                );
+                              }),
+                            ],
+                            onChanged: (val) {
+                              setState(() {
+                                _priorityFilter = val;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _priorityFilter,
-                        dropdownColor: AppColors.surfaceContainerHigh,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText: 'Priority',
-                          labelStyle: TextStyle(
-                            color: AppColors.onSurfaceVariant,
-                            fontSize: 11,
-                          ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 8,
-                          ),
-                        ),
-                        items: [
-                          const DropdownMenuItem<String>(
-                            value: null,
-                            child: Text(
-                              'All Priority',
-                              style: TextStyle(
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: _categoryFilter,
+                            dropdownColor: AppColors.surfaceContainerHigh,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Category',
+                              labelStyle: TextStyle(
                                 color: AppColors.onSurfaceVariant,
+                                fontSize: 11,
+                              ),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 8,
                               ),
                             ),
-                          ),
-                          ...AppConstants.priorities.map((p) {
-                            return DropdownMenuItem<String>(
-                              value: p,
-                              child: Text(
-                                p.toUpperCase(),
-                                style: const TextStyle(color: Colors.white),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: null,
+                                child: Text(
+                                  'All Category',
+                                  style: TextStyle(
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                ),
                               ),
-                            );
-                          }),
-                        ],
-                        onChanged: (val) {
-                          setState(() {
-                            _priorityFilter = val;
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _categoryFilter,
-                        dropdownColor: AppColors.surfaceContainerHigh,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText: 'Category',
-                          labelStyle: TextStyle(
-                            color: AppColors.onSurfaceVariant,
-                            fontSize: 11,
-                          ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 8,
+                              ...AppConstants.categories.map((c) {
+                                return DropdownMenuItem<String>(
+                                  value: c,
+                                  child: Text(
+                                    AppConstants.categoryLabels[c] ?? c,
+                                    style: const TextStyle(color: Colors.white),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }),
+                            ],
+                            onChanged: (val) {
+                              setState(() {
+                                _categoryFilter = val;
+                              });
+                            },
                           ),
                         ),
-                        items: [
-                          const DropdownMenuItem<String>(
-                            value: null,
-                            child: Text(
-                              'All Category',
-                              style: TextStyle(
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: _districtFilter,
+                            dropdownColor: AppColors.surfaceContainerHigh,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'District',
+                              labelStyle: TextStyle(
                                 color: AppColors.onSurfaceVariant,
+                                fontSize: 11,
+                              ),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 8,
                               ),
                             ),
-                          ),
-                          ...AppConstants.categories.map((c) {
-                            return DropdownMenuItem<String>(
-                              value: c,
-                              child: Text(
-                                AppConstants.categoryLabels[c] ?? c,
-                                style: const TextStyle(color: Colors.white),
-                                overflow: TextOverflow.ellipsis,
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: null,
+                                child: Text(
+                                  'All Districts',
+                                  style: TextStyle(
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                ),
                               ),
-                            );
-                          }),
-                        ],
-                        onChanged: (val) {
-                          setState(() {
-                            _categoryFilter = val;
-                          });
-                        },
-                      ),
+                              ...KeralaLocations.districts.map((d) {
+                                return DropdownMenuItem<String>(
+                                  value: d,
+                                  child: Text(
+                                    d,
+                                    style: const TextStyle(color: Colors.white),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }),
+                            ],
+                            onChanged: (val) {
+                              setState(() {
+                                _districtFilter = val;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
               // ─── Case List Title ───
               const Padding(

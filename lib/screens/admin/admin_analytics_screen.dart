@@ -1,15 +1,134 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
 import '../../models/report_model.dart';
 import '../../services/report_service.dart';
+import '../../services/auth_service.dart';
 
-/// Admin analytics dashboard with charts and predictive trend analysis.
+/// Admin Home Page / Dashboard screen showing the Curve Graph first,
+/// then Predictive Trend Analysis, Recent Reports list, and overall charts.
 class AdminAnalyticsScreen extends StatelessWidget {
   const AdminAnalyticsScreen({super.key});
+
+  Widget _buildCurveGraph(List<ReportModel> reports) {
+    if (reports.isEmpty) {
+      return Container(
+        height: 180,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainer,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: const Center(
+          child: Text(
+            'No data available for graph',
+            style: TextStyle(color: AppColors.onSurfaceVariant),
+          ),
+        ),
+      );
+    }
+
+    final sortedReports = List<ReportModel>.from(reports)
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+    final Map<String, int> dailyCounts = {};
+    for (final r in sortedReports) {
+      final dateKey =
+          "${r.createdAt.year}-${r.createdAt.month.toString().padLeft(2, '0')}-${r.createdAt.day.toString().padLeft(2, '0')}";
+      dailyCounts[dateKey] = (dailyCounts[dateKey] ?? 0) + 1;
+    }
+
+    final dailyEntries = dailyCounts.entries.toList();
+    final lastEntries = dailyEntries.length > 7
+        ? dailyEntries.sublist(dailyEntries.length - 7)
+        : dailyEntries;
+
+    final List<FlSpot> spots = [];
+    for (int i = 0; i < lastEntries.length; i++) {
+      spots.add(FlSpot(i.toDouble(), lastEntries[i].value.toDouble()));
+    }
+
+    return Container(
+      height: 180,
+      padding: const EdgeInsets.only(right: 20, left: 10, top: 15, bottom: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: LineChart(
+        LineChartData(
+          gridData: const FlGridData(show: false),
+          titlesData: FlTitlesData(
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  final idx = value.toInt();
+                  if (idx >= 0 && idx < lastEntries.length) {
+                    final dateStr = lastEntries[idx].key;
+                    final parts = dateStr.split('-');
+                    if (parts.length == 3) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          "${parts[1]}/${parts[2]}",
+                          style: const TextStyle(
+                            fontSize: 9,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    value.toInt().toString(),
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots.isEmpty ? [const FlSpot(0, 0)] : spots,
+              isCurved: true,
+              color: AppColors.secondary,
+              barWidth: 3,
+              isStrokeCapRound: true,
+              dotData: const FlDotData(show: true),
+              belowBarData: BarAreaData(
+                show: true,
+                color: AppColors.secondary.withValues(alpha: 0.15),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildPredictiveCard(List<ReportModel> reports) {
     if (reports.isEmpty) {
@@ -198,7 +317,20 @@ class AdminAnalyticsScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: const Text('Analytics')),
+      appBar: AppBar(
+        title: const Text('Admin Dashboard'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: AppColors.onSurfaceVariant),
+            onPressed: () async {
+              await context.read<AuthService>().logout();
+              if (context.mounted) {
+                context.go('/login');
+              }
+            },
+          ),
+        ],
+      ),
       body: StreamBuilder<List<ReportModel>>(
         stream: reportService.allReportsStream(),
         builder: (context, snapshot) {
@@ -230,7 +362,81 @@ class AdminAnalyticsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ─── Curve Graph (TIMELINE OF REPORTS) ───
+                const Text(
+                  'Incident Reports Timeline',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildCurveGraph(reports),
+
+                const SizedBox(height: 24),
+
+                // ─── Predictive Analytics Card ───
+                _buildPredictiveCard(reports),
+
+                const SizedBox(height: 24),
+
+                // ─── Recent Reports Section ───
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Recent Reports',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => context.go('/admin/cases'),
+                      child: const Text(
+                        'View All',
+                        style: TextStyle(
+                          color: AppColors.secondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (reports.isEmpty)
+                  const Center(
+                    child: Text(
+                      'No reports available',
+                      style: TextStyle(color: AppColors.onSurfaceVariant),
+                    ),
+                  )
+                else
+                  ...reports.take(5).map((report) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: _RecentReportCard(
+                        report: report,
+                        onTap: () =>
+                            context.go('/admin/report/${report.reportId}'),
+                      ),
+                    );
+                  }),
+
+                const SizedBox(height: 24),
+
                 // ─── Summary Cards ───
+                const Text(
+                  'Case Summary Statistics',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     _SummaryCard(
@@ -252,11 +458,6 @@ class AdminAnalyticsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 24),
-
-                // ─── Predictive Analytics Card ───
-                _buildPredictiveCard(reports),
 
                 const SizedBox(height: 24),
 
@@ -500,6 +701,113 @@ class _SummaryCard extends StatelessWidget {
                 fontSize: 11,
                 color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecentReportCard extends StatelessWidget {
+  final ReportModel report;
+  final VoidCallback onTap;
+
+  const _RecentReportCard({required this.report, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    Color priorityColor;
+    switch (report.priority.toLowerCase()) {
+      case 'critical':
+        priorityColor = AppColors.priorityCritical;
+        break;
+      case 'high':
+        priorityColor = AppColors.priorityHigh;
+        break;
+      case 'medium':
+        priorityColor = AppColors.priorityMedium;
+        break;
+      default:
+        priorityColor = AppColors.priorityLow;
+    }
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: priorityColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                report.priority.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: priorityColor,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppConstants.categoryLabels[report.category] ??
+                        report.category,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    report.district ?? 'Unknown District',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  report.reportId,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                    color: AppColors.tertiary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  report.status.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color:
+                        report.status == 'resolved' || report.status == 'closed'
+                        ? AppColors.secondary
+                        : AppColors.error,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

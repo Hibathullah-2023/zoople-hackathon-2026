@@ -81,9 +81,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       Text(
-                        user.anonymousId,
+                        user.email,
                         style: const TextStyle(
                           fontSize: 13,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        user.anonymousId,
+                        style: const TextStyle(
+                          fontSize: 12,
                           color: AppColors.tertiary,
                           letterSpacing: 1,
                         ),

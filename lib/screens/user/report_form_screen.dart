@@ -69,7 +69,9 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Enable Location services'),
-          content: const Text('Nizhal needs location access to pinpoint incident coordinates and suggest nearest authorities.'),
+          content: const Text(
+            'Nizhal needs location access to pinpoint incident coordinates and suggest nearest authorities.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -101,7 +103,9 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
 
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      _showError('Location services are disabled. Please enable them in settings.');
+      _showError(
+        'Location services are disabled. Please enable them in settings.',
+      );
       return;
     }
 
@@ -123,12 +127,15 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
 
     try {
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
       );
 
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
-        position.longitude
+        position.longitude,
       );
 
       if (placemarks.isNotEmpty) {
@@ -142,7 +149,9 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         for (final district in KeralaLocations.districts) {
           if (cleanSubAdmin.contains(district.toLowerCase()) ||
               cleanLocality.contains(district.toLowerCase()) ||
-              (pm.administrativeArea ?? '').toLowerCase().contains(district.toLowerCase())) {
+              (pm.administrativeArea ?? '').toLowerCase().contains(
+                district.toLowerCase(),
+              )) {
             detectedDistrict = district;
             break;
           }
@@ -153,14 +162,17 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         setState(() {
           _selectedDistrict = detectedDistrict;
           _selectedCity = detectedCity;
-          _addressController.text = '${pm.name ?? ""}, ${pm.street ?? ""}, ${pm.postalCode ?? ""}';
+          _addressController.text =
+              '${pm.name ?? ""}, ${pm.street ?? ""}, ${pm.postalCode ?? ""}';
           _gpsCoordinates = GeoPoint(position.latitude, position.longitude);
         });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Location detected: $detectedCity, $detectedDistrict'),
+              content: Text(
+                'Location detected: $detectedCity, $detectedDistrict',
+              ),
               backgroundColor: AppColors.secondary,
             ),
           );
@@ -183,7 +195,9 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
     switch (_currentStep) {
       case 0: // Description
         if (_descriptionController.text.trim().length < 10) {
-          _showError('Please provide a detailed description (min 10 characters).');
+          _showError(
+            'Please provide a detailed description (min 10 characters).',
+          );
           return false;
         }
         return true;
@@ -200,7 +214,9 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         return true;
       case 2: // Photos (Required)
         if (_photos.isEmpty) {
-          _showError('Evidence must be uploaded. Please add at least one photo.');
+          _showError(
+            'Evidence must be uploaded. Please add at least one photo.',
+          );
           return false;
         }
         return true;
@@ -219,10 +235,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: AppColors.errorContainer,
-      ),
+      SnackBar(content: Text(msg), backgroundColor: AppColors.errorContainer),
     );
   }
 
@@ -288,11 +301,14 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
             .child('evidence')
             .child('${DateTime.now().millisecondsSinceEpoch}_${photo.name}');
         final bytes = await photo.readAsBytes();
-        final uploadTask = await ref.putData(
+        final uploadTask = ref.putData(
           bytes,
           SettableMetadata(contentType: 'image/jpeg'),
         );
-        final url = await uploadTask.ref.getDownloadURL();
+        final taskSnapshot = await uploadTask.timeout(
+          const Duration(seconds: 15),
+        );
+        final url = await taskSnapshot.ref.getDownloadURL();
         mediaUrls.add(url);
       }
 
@@ -321,10 +337,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
           .doc(user.uid)
           .collection('myReports')
           .doc(report.reportId)
-          .set({
-        'reportId': report.reportId,
-        'createdAt': Timestamp.now(),
-      });
+          .set({'reportId': report.reportId, 'createdAt': Timestamp.now()});
 
       setState(() {
         _submittedReportId = report.reportId;
@@ -428,7 +441,8 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                       value: (_currentStep + 1) / _totalSteps,
                       backgroundColor: AppColors.surfaceContainerHighest,
                       valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppColors.tertiary),
+                        AppColors.tertiary,
+                      ),
                       minHeight: 4,
                     ),
                   ),
@@ -480,8 +494,8 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                     onPressed: _isSubmitting
                         ? null
                         : (_currentStep == _totalSteps - 1
-                            ? _submitReport
-                            : _nextStep),
+                              ? _submitReport
+                              : _nextStep),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _currentStep == _totalSteps - 1
                           ? AppColors.tertiary
@@ -623,18 +637,21 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(icon,
-                          color: isSelected
-                              ? AppColors.secondary
-                              : AppColors.onSurfaceVariant),
+                      Icon(
+                        icon,
+                        color: isSelected
+                            ? AppColors.secondary
+                            : AppColors.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Text(
                           label,
                           style: TextStyle(
                             fontSize: 15,
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.w400,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
                             color: isSelected
                                 ? AppColors.secondary
                                 : AppColors.onSurface,
@@ -642,8 +659,11 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                         ),
                       ),
                       if (isSelected)
-                        const Icon(Icons.check_circle,
-                            color: AppColors.secondary, size: 22),
+                        const Icon(
+                          Icons.check_circle,
+                          color: AppColors.secondary,
+                          size: 22,
+                        ),
                     ],
                   ),
                 ),
@@ -773,8 +793,11 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                           shape: BoxShape.circle,
                           color: AppColors.error,
                         ),
-                        child: const Icon(Icons.close,
-                            size: 14, color: Colors.white),
+                        child: const Icon(
+                          Icons.close,
+                          size: 14,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -842,8 +865,10 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
           dropdownColor: AppColors.surfaceContainerHigh,
           decoration: const InputDecoration(
             labelText: 'District *',
-            prefixIcon:
-                Icon(Icons.map_outlined, color: AppColors.onSurfaceVariant),
+            prefixIcon: Icon(
+              Icons.map_outlined,
+              color: AppColors.onSurfaceVariant,
+            ),
           ),
           items: KeralaLocations.districts.map((d) {
             return DropdownMenuItem(value: d, child: Text(d));
@@ -864,13 +889,16 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
             dropdownColor: AppColors.surfaceContainerHigh,
             decoration: const InputDecoration(
               labelText: 'City / Area',
-              prefixIcon: Icon(Icons.location_city,
-                  color: AppColors.onSurfaceVariant),
+              prefixIcon: Icon(
+                Icons.location_city,
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
             items: (KeralaLocations.districtCities[_selectedDistrict] ?? [])
                 .map((c) {
-              return DropdownMenuItem(value: c, child: Text(c));
-            }).toList(),
+                  return DropdownMenuItem(value: c, child: Text(c));
+                })
+                .toList(),
             onChanged: (val) => setState(() => _selectedCity = val),
           ),
         const SizedBox(height: 16),
@@ -882,8 +910,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
           style: const TextStyle(color: AppColors.onSurface),
           decoration: const InputDecoration(
             labelText: 'Additional Address Details (optional)',
-            prefixIcon:
-                Icon(Icons.near_me, color: AppColors.onSurfaceVariant),
+            prefixIcon: Icon(Icons.near_me, color: AppColors.onSurfaceVariant),
             hintText: 'Near landmark, street name...',
           ),
         ),
@@ -1034,8 +1061,9 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                       'Save this ID to track your report status',
                       style: TextStyle(
                         fontSize: 12,
-                        color:
-                            AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                     ),
                   ],

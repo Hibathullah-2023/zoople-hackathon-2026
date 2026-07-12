@@ -202,7 +202,7 @@ class AuthService {
     try {
       await user.reauthenticateWithCredential(credential);
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'wrong-password') {
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
         throw Exception('Incorrect current password.');
       }
       throw Exception(e.message ?? 'Re-authentication failed.');

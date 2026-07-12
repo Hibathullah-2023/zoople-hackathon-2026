@@ -1,17 +1,17 @@
 const { initializeApp } = require('firebase/app');
-const { 
-  getAuth, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut 
+const {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut
 } = require('firebase/auth');
-const { 
-  getFirestore, 
+const {
+  getFirestore,
   collection,
-  doc, 
-  setDoc, 
-  writeBatch, 
-  serverTimestamp 
+  doc,
+  setDoc,
+  writeBatch,
+  serverTimestamp
 } = require('firebase/firestore');
 
 // Firebase config retrieved from firebase_options.dart for zooplehackathon
@@ -85,7 +85,7 @@ async function registerAndCreateProfile(cred, profileData) {
   const userCredential = await createUserWithEmailAndPassword(auth, cred.email, cred.password);
   const uid = userCredential.user.uid;
   console.log(`Auth account created. UID: ${uid}. Creating Firestore profile...`);
-  
+
   await setDoc(doc(db, 'users', uid), {
     email: cred.email,
     role: profileData.role,
@@ -99,7 +99,7 @@ async function registerAndCreateProfile(cred, profileData) {
     createdAt: new Date(),
     updatedAt: new Date()
   });
-  
+
   console.log(`Profile created successfully for: ${cred.email}`);
   await signOut(auth);
   await delay(1000);
@@ -121,7 +121,11 @@ async function runSeeder() {
       });
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') {
-        console.log('Admin auth account already exists. Proceeding...');
+        console.log('Admin auth account already exists. Retrieving UID...');
+        const userCred = await signInWithEmailAndPassword(auth, credentials.admin.email, credentials.admin.password);
+        adminUid = userCred.user.uid;
+        await signOut(auth);
+        await delay(1000);
       } else {
         throw err;
       }
@@ -138,7 +142,11 @@ async function runSeeder() {
       });
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') {
-        console.log('End User auth account already exists. Proceeding...');
+        console.log('End User auth account already exists. Retrieving UID...');
+        const userCred = await signInWithEmailAndPassword(auth, credentials.endUser.email, credentials.endUser.password);
+        userUid = userCred.user.uid;
+        await signOut(auth);
+        await delay(1000);
       } else {
         throw err;
       }
@@ -158,7 +166,11 @@ async function runSeeder() {
         authUids[key] = uid;
       } catch (err) {
         if (err.code === 'auth/email-already-in-use') {
-          console.log(`Authority ${cred.email} already exists. Proceeding...`);
+          console.log(`Authority ${cred.email} already exists. Retrieving UID...`);
+          const userCred = await signInWithEmailAndPassword(auth, cred.email, cred.password);
+          authUids[key] = userCred.user.uid;
+          await signOut(auth);
+          await delay(1000);
         } else {
           throw err;
         }
@@ -172,7 +184,7 @@ async function runSeeder() {
 
     // Seed Authorities Collection
     const batch = writeBatch(db);
-    
+
     // Seed EKM Authority
     if (authUids.authorityEkm) {
       batch.set(doc(db, 'authorities', authUids.authorityEkm), {
