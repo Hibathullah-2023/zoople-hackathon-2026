@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/kerala_locations.dart';
 
@@ -12,6 +14,62 @@ class RehabCentresScreen extends StatefulWidget {
 
 class _RehabCentresScreenState extends State<RehabCentresScreen> {
   String? _selectedDistrict;
+  String? _detectedDistrict;
+
+  @override
+  void initState() {
+    super.initState();
+    _detectCurrentDistrict();
+  }
+
+  Future<void> _detectCurrentDistrict() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        final position =
+            await Geolocator.getLastKnownPosition() ??
+            await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.low,
+                timeLimit: Duration(seconds: 10),
+              ),
+            );
+        List<Placemark> placemarks = [];
+        try {
+          placemarks = await placemarkFromCoordinates(
+            position.latitude,
+            position.longitude,
+          );
+        } catch (_) {}
+
+        if (placemarks.isNotEmpty) {
+          final pm = placemarks.first;
+          final cleanSubAdmin = (pm.subAdministrativeArea ?? '').toLowerCase();
+          final cleanLocality = (pm.locality ?? '').toLowerCase();
+
+          for (final district in KeralaLocations.districts) {
+            if (cleanSubAdmin.contains(district.toLowerCase()) ||
+                cleanLocality.contains(district.toLowerCase()) ||
+                (pm.administrativeArea ?? '').toLowerCase().contains(
+                  district.toLowerCase(),
+                )) {
+              if (mounted) {
+                setState(() {
+                  _detectedDistrict = district;
+                  _selectedDistrict = district;
+                });
+              }
+              break;
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
 
   // Canned list of rehabilitation centres in Kerala
   final List<Map<String, String>> _centres = [
@@ -82,23 +140,33 @@ class _RehabCentresScreenState extends State<RehabCentresScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final List<Map<String, String>> sortedCentres =
+        List<Map<String, String>>.from(_centres)..sort((a, b) {
+          if (_detectedDistrict != null) {
+            final matchA = a['district'] == _detectedDistrict ? 0 : 1;
+            final matchB = b['district'] == _detectedDistrict ? 0 : 1;
+            return matchA.compareTo(matchB);
+          }
+          return 0;
+        });
+
     // Filter centres based on selected district
     final filteredCentres = _selectedDistrict == null
-        ? _centres
-        : _centres.where((c) => c['district'] == _selectedDistrict).toList();
+        ? sortedCentres
+        : sortedCentres
+              .where((c) => c['district'] == _selectedDistrict)
+              .toList();
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        title: const Text('Rehabilitation Centres'),
-      ),
+      appBar: AppBar(title: const Text('Rehabilitation Centres')),
       body: Column(
         children: [
           // District Filter dropdown
           Padding(
             padding: const EdgeInsets.all(16),
             child: DropdownButtonFormField<String>(
-              value: _selectedDistrict,
+              initialValue: _selectedDistrict,
               dropdownColor: AppColors.surfaceContainerHigh,
               decoration: const InputDecoration(
                 labelText: 'Filter by District',
@@ -110,10 +178,7 @@ class _RehabCentresScreenState extends State<RehabCentresScreen> {
                   child: Text('All Districts'),
                 ),
                 ...KeralaLocations.districts.map((d) {
-                  return DropdownMenuItem<String>(
-                    value: d,
-                    child: Text(d),
-                  );
+                  return DropdownMenuItem<String>(value: d, child: Text(d));
                 }),
               ],
               onChanged: (val) {
@@ -130,13 +195,17 @@ class _RehabCentresScreenState extends State<RehabCentresScreen> {
                 ? Center(
                     child: Text(
                       'No centres found in this district.',
-                      style: TextStyle(color: AppColors.onSurfaceVariant.withValues(alpha: 0.6)),
+                      style: TextStyle(
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
+                      ),
                     ),
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: filteredCentres.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final centre = filteredCentres[index];
                       return Container(
@@ -171,7 +240,9 @@ class _RehabCentresScreenState extends State<RehabCentresScreen> {
                               centre['address']!,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
+                                color: AppColors.onSurfaceVariant.withValues(
+                                  alpha: 0.8,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -183,7 +254,10 @@ class _RehabCentresScreenState extends State<RehabCentresScreen> {
                                   icon: const Icon(Icons.phone, size: 16),
                                   label: const Text('Call Centre'),
                                   style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
                                   ),
                                 ),
                               ],

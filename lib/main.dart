@@ -4,8 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'constants/app_theme.dart';
+import 'constants/app_colors.dart';
 import 'services/auth_service.dart';
 import 'services/report_service.dart';
+import 'services/accessibility_service.dart';
 import 'router/app_router.dart';
 
 void main() async {
@@ -42,6 +44,9 @@ class NizhalApp extends StatelessWidget {
       providers: [
         Provider<AuthService>(create: (_) => AuthService()),
         Provider<ReportService>(create: (_) => ReportService()),
+        ChangeNotifierProvider<AccessibilityService>(
+          create: (_) => AccessibilityService(),
+        ),
       ],
       child: Builder(
         builder: (context) {
@@ -53,6 +58,26 @@ class NizhalApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             theme: AppTheme.darkTheme,
             routerConfig: router,
+            builder: (context, child) {
+              final accessibility = context.watch<AccessibilityService>();
+              return Container(
+                color: const Color(
+                  0xFF070B13,
+                ), // Deep outer background for contrast on desktop/web
+                child: MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: TextScaler.linear(accessibility.textScale),
+                  ),
+                  child: Center(
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      color: AppColors.background,
+                      child: child!,
+                    ),
+                  ),
+                ),
+              );
+            },
           );
         },
       ),

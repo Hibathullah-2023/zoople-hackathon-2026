@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_router/go_router.dart';
 import '../../constants/app_colors.dart';
+import '../../constants/app_constants.dart';
 import '../../constants/kerala_locations.dart';
+import '../../models/report_model.dart';
 import '../../services/report_service.dart';
+import '../../services/auth_service.dart';
 
-/// Interactive Google Map displaying incident density across Kerala.
+/// Interactive OpenStreetMap displaying incident density across Kerala.
 class KeralaMapScreen extends StatefulWidget {
   const KeralaMapScreen({super.key});
 
@@ -14,9 +20,12 @@ class KeralaMapScreen extends StatefulWidget {
 }
 
 class _KeralaMapScreenState extends State<KeralaMapScreen> {
-  GoogleMapController? _mapController;
-  final Set<Circle> _densityCircles = {};
+  final MapController _mapController = MapController();
+  final List<CircleMarker> _densityCircles = [];
+  final List<Marker> _mapMarkers = [];
   bool _isLoading = true;
+  String? _userRole;
+  final Set<String> _myReportIds = {};
 
   // Center on Kerala
   static const LatLng _keralaCenter = LatLng(
@@ -33,75 +42,162 @@ class _KeralaMapScreenState extends State<KeralaMapScreen> {
   Future<void> _loadIncidentDensity() async {
     try {
       final reportService = context.read<ReportService>();
+      final authService = context.read<AuthService>();
+      final currentUser = authService.currentUser;
+
+      if (currentUser != null) {
+        _userRole = (await authService.getCurrentUserProfile())?.role;
+
+        final myReportDocs = await FirebaseFirestore.instance
+            .collection(AppConstants.usersCollection)
+            .doc(currentUser.uid)
+            .collection('myReports')
+            .get();
+        _myReportIds.clear();
+        for (final d in myReportDocs.docs) {
+          _myReportIds.add(d.id);
+        }
+      }
 
       // Fetch all reports to aggregate location density
-      // In a production app, we would query aggregated counts from Firestore.
-      // For MVP, we stream/fetch reports and compute densities dynamically.
-      reportService.allReportsStream().first.then((reports) {
-        final Map<String, int> districtCounts = {};
+      final reports = await reportService.allReportsStream().first;
 
-        // Count reports per district
-        for (final report in reports) {
-          if (report.district != null) {
-            districtCounts[report.district!] =
-                (districtCounts[report.district!] ?? 0) + 1;
-          }
-        }
+      final List<CircleMarker> circles = [];
+      final List<Marker> markers = [];
 
-        final Set<Circle> circles = {};
+      for (final report in reports) {
+        if (report.location != null) {
+          final latLng = LatLng(
+            report.location!.latitude,
+            report.location!.longitude,
+          );
+          final heatColor = _priorityColor(report.priority);
 
-        // Generate map circles based on density
-        districtCounts.forEach((district, count) {
-          final centerCoords = KeralaLocations.districtCenters[district];
-          if (centerCoords != null) {
-            final latLng = LatLng(centerCoords[0], centerCoords[1]);
+          // Heat Map Overlay: Transparent circle outer glow and core
+          circles.add(
+            CircleMarker(
+              point: latLng,
+              radius: 18,
+              useRadiusInMeter: false,
+              color: heatColor.withValues(alpha: 0.18),
+              borderStrokeWidth: 0,
+            ),
+          );
 
-            // Set circle size and color based on density
-            double radius = 10000 + (count * 2000).toDouble(); // meters
-            if (radius > 40000) radius = 40000; // Cap max radius
+          circles.add(
+            CircleMarker(
+              point: latLng,
+              radius: 6,
+              useRadiusInMeter: false,
+              color: heatColor.withValues(alpha: 0.7),
+              borderStrokeWidth: 1.5,
+              borderColor: Colors.white,
+            ),
+          );
 
-            Color circleColor = Colors.green;
-            if (count >= 10) {
-              circleColor = Colors.red;
-            } else if (count >= 5) {
-              circleColor = Colors.orange;
-            } else if (count >= 2) {
-              circleColor = Colors.yellow;
-            }
-
-            circles.add(
-              Circle(
-                circleId: CircleId(district),
-                center: latLng,
-                radius: radius,
-                fillColor: circleColor.withValues(alpha: 0.35),
-                strokeColor: circleColor,
-                strokeWidth: 2,
-                consumeTapEvents: true,
-                onTap: () {
-                  _showDistrictDetails(district, count);
-                },
+          // Interactive tap overlay marker
+          markers.add(
+            Marker(
+              point: latLng,
+              width: 40,
+              height: 40,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _showIncidentMapDetails(report),
+                child: Container(color: Colors.transparent),
               ),
-            );
-          }
-        });
-
-        if (mounted) {
-          setState(() {
-            _densityCircles.clear();
-            _densityCircles.addAll(circles);
-            _isLoading = false;
-          });
+            ),
+          );
         }
-      });
+      }
+
+      if (mounted) {
+        setState(() {
+          _densityCircles.clear();
+          _densityCircles.addAll(circles);
+          _mapMarkers.clear();
+          _mapMarkers.addAll(markers);
+          _isLoading = false;
+        });
+      }
     } catch (e) {
+      debugPrint('Failed to load home map density: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
   }
 
-  void _showDistrictDetails(String district, int count) {
+  Color _priorityColor(String p) {
+    switch (p.toLowerCase()) {
+      case 'critical':
+        return Colors.red;
+      case 'high':
+        return Colors.orange;
+      case 'medium':
+        return Colors.yellow;
+      case 'low':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'submitted':
+        return AppColors.statusSubmitted;
+      case 'under_review':
+        return AppColors.statusUnderReview;
+      case 'assigned':
+        return AppColors.statusAssigned;
+      case 'in_progress':
+        return AppColors.statusInProgress;
+      case 'resolved':
+        return AppColors.statusResolved;
+      case 'closed':
+        return AppColors.statusClosed;
+      case 'fake':
+        return AppColors.statusFake;
+      default:
+        return AppColors.outline;
+    }
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppColors.onSurfaceVariant,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: AppColors.onSurface, fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showIncidentMapDetails(ReportModel report) {
+    final isOwnerOrAdmin =
+        _userRole == 'admin' ||
+        _userRole == 'authority' ||
+        _myReportIds.contains(report.reportId);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surfaceContainerHigh,
@@ -115,52 +211,115 @@ class _KeralaMapScreenState extends State<KeralaMapScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '$district District',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.onSurface,
+              if (isOwnerOrAdmin) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      AppConstants.categoryLabels[report.category] ??
+                          report.category.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _statusColor(
+                          report.status,
+                        ).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        report.status.toUpperCase().replaceAll('_', ' '),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: _statusColor(report.status),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Icon(Icons.warning, color: AppColors.error),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Total Reported Incidents: $count',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: AppColors.onSurface,
+                const SizedBox(height: 16),
+                _detailRow('District', report.district ?? 'Unknown'),
+                _detailRow('Priority', report.priority.toUpperCase()),
+                _detailRow(
+                  'Date',
+                  '${report.createdAt.day}/${report.createdAt.month}/${report.createdAt.year}',
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Description:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  report.description,
+                  style: const TextStyle(color: AppColors.onSurfaceVariant),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      context.go('/track/${report.reportId}');
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.secondary,
+                      foregroundColor: AppColors.onSecondary,
+                    ),
+                    child: const Text('Track Report Status'),
+                  ),
+                ),
+              ] else ...[
+                const Text(
+                  'Incident Report',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _detailRow('Priority', report.priority.toUpperCase()),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.3),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Status: ${count >= 10
-                    ? "Critical Density"
-                    : count >= 5
-                    ? "High Density"
-                    : "Moderate Density"}',
-                style: TextStyle(
-                  color: count >= 10
-                      ? AppColors.priorityCritical
-                      : count >= 5
-                      ? AppColors.priorityHigh
-                      : AppColors.priorityLow,
-                  fontWeight: FontWeight.w600,
+                  child: const Row(
+                    children: [
+                      Icon(Icons.lock, color: AppColors.error, size: 18),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Detailed view restricted to reporter or authorized personnel only.',
+                          style: TextStyle(
+                            color: AppColors.error,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Close'),
-                ),
-              ),
+                const SizedBox(height: 12),
+              ],
             ],
           ),
         );
@@ -186,23 +345,29 @@ class _KeralaMapScreenState extends State<KeralaMapScreen> {
       ),
       body: Stack(
         children: [
-          GoogleMap(
-            initialCameraPosition: const CameraPosition(
-              target:
-                  _kSimpleCenter, // fallback target if controller not loaded
-              zoom: 7.2,
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _keralaCenter,
+              initialZoom: 7.6,
+              maxZoom: 13.0,
+              minZoom: 7.4,
+              cameraConstraint: CameraConstraint.contain(
+                bounds: LatLngBounds(
+                  const LatLng(8.1, 74.8),
+                  const LatLng(12.9, 77.6),
+                ),
+              ),
             ),
-            onMapCreated: (controller) {
-              _mapController = controller;
-              // Apply Dark Theme to map for Nizhal styling matching app aesthetics
-              _mapController?.setMapStyle(_darkMapStyle);
-              _mapController?.animateCamera(
-                CameraUpdate.newLatLngZoom(_keralaCenter, 7.2),
-              );
-            },
-            circles: _densityCircles,
-            zoomControlsEnabled: false,
-            myLocationButtonEnabled: false,
+            children: [
+              TileLayer(
+                urlTemplate:
+                    'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                userAgentPackageName: 'org.nizhal.app',
+              ),
+              CircleLayer(circles: _densityCircles),
+              MarkerLayer(markers: _mapMarkers),
+            ],
           ),
           if (_isLoading) const Center(child: CircularProgressIndicator()),
 
@@ -233,155 +398,6 @@ class _KeralaMapScreenState extends State<KeralaMapScreen> {
       ),
     );
   }
-
-  static const LatLng _kSimpleCenter = LatLng(10.5276, 76.2144);
-
-  // Dark Map Style JSON string to customize Google Maps
-  static const String _darkMapStyle = '''
-  [
-    {
-      "elementType": "geometry",
-      "stylers": [
-        {
-          "color": "#121e30"
-        }
-      ]
-    },
-    {
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#746855"
-        }
-      ]
-    },
-    {
-      "elementType": "labels.text.stroke",
-      "stylers": [
-        {
-          "color": "#242f3e"
-        }
-      ]
-    },
-    {
-      "featureType": "administrative.locality",
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#d59563"
-        }
-      ]
-    },
-    {
-      "featureType": "poi",
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#d59563"
-        }
-      ]
-    },
-    {
-      "featureType": "poi.park",
-      "elementType": "geometry",
-      "stylers": [
-        {
-          "color": "#172b38"
-        }
-      ]
-    },
-    {
-      "featureType": "poi.park",
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#6b9a76"
-        }
-      ]
-    },
-    {
-      "featureType": "road",
-      "elementType": "geometry",
-      "stylers": [
-        {
-          "color": "#243548"
-        }
-      ]
-    },
-    {
-      "featureType": "road",
-      "elementType": "geometry.stroke",
-      "stylers": [
-        {
-          "color": "#182635"
-        }
-      ]
-    },
-    {
-      "featureType": "road",
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#9ca5b3"
-        }
-      ]
-    },
-    {
-      "featureType": "road.highway",
-      "elementType": "geometry",
-      "stylers": [
-        {
-          "color": "#2c3e50"
-        }
-      ]
-    },
-    {
-      "featureType": "road.highway",
-      "elementType": "geometry.stroke",
-      "stylers": [
-        {
-          "color": "#1f2d3d"
-        }
-      ]
-    },
-    {
-      "featureType": "road.highway",
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#f3c159"
-        }
-      ]
-    },
-    {
-      "featureType": "water",
-      "elementType": "geometry",
-      "stylers": [
-        {
-          "color": "#09121f"
-        }
-      ]
-    },
-    {
-      "featureType": "water",
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#515c6d"
-        }
-      ]
-    },
-    {
-      "featureType": "water",
-      "elementType": "labels.text.stroke",
-      "stylers": [
-        {
-          "color": "#17263c"
-        }
-      ]
-    }
-  ]
-  ''';
 }
 
 class _LegendItem extends StatelessWidget {

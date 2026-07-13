@@ -47,7 +47,9 @@ class AppColors {
   static const Color surfaceVariant = Color(0xFF1E293B);
 
   static const Color onSurface = Color(0xFFE2E8F0); // Off White
-  static const Color onSurfaceVariant = Color(0xFF9CA3AF); // Cool Gray
+  static const Color onSurfaceVariant = Color(
+    0xFFE2E8F0,
+  ); // Brighter Off White for high visibility
   static const Color onBackground = Color(0xFFE2E8F0);
   static const Color background = Color(0xFF0F172A); // Deep Navy
 

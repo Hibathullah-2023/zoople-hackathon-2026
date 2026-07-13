@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -212,15 +213,43 @@ class AuthService {
     await user.updatePassword(newPassword);
   }
 
-  /// Toggle anonymity preference in profile settings
+  /// Toggle anonymity preference in profile settings and propagate to all submitted reports
   Future<void> toggleAnonymity(bool isAnonymous) async {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    await _firestore
+    final batch = _firestore.batch();
+
+    // 1. Update user document
+    final userRef = _firestore
         .collection(AppConstants.usersCollection)
-        .doc(user.uid)
-        .update({'isAnonymous': isAnonymous, 'updatedAt': Timestamp.now()});
+        .doc(user.uid);
+    batch.update(userRef, {
+      'isAnonymous': isAnonymous,
+      'updatedAt': Timestamp.now(),
+    });
+
+    // 2. Fetch all reports from myReports sub-collection
+    final myReportsSnap = await userRef.collection('myReports').get();
+
+    for (final doc in myReportsSnap.docs) {
+      final reportId = doc.id;
+      final reportRef = _firestore
+          .collection(AppConstants.reportsCollection)
+          .doc(reportId);
+      batch.update(reportRef, {
+        'isAnonymous': isAnonymous,
+        'updatedAt': Timestamp.now(),
+      });
+
+      // Also update the isAnonymous inside the report's identity subcollection document
+      final identityRef = reportRef
+          .collection(AppConstants.reportIdentitySubcollection)
+          .doc(user.uid);
+      batch.update(identityRef, {'isAnonymous': isAnonymous});
+    }
+
+    await batch.commit();
   }
 
   /// Update user profile fields
@@ -272,6 +301,26 @@ class AuthService {
     }
     if (password.contains(' ')) {
       throw Exception('Password must not contain spaces.');
+    }
+
+    final emailQuery = await _firestore
+        .collection(AppConstants.authoritiesCollection)
+        .where('email', isEqualTo: email.trim())
+        .limit(1)
+        .get();
+    if (emailQuery.docs.isNotEmpty) {
+      throw Exception('An authority with this email already exists.');
+    }
+
+    if (badgeId != null && badgeId.trim().isNotEmpty) {
+      final badgeQuery = await _firestore
+          .collection(AppConstants.authoritiesCollection)
+          .where('badgeId', isEqualTo: badgeId.trim())
+          .limit(1)
+          .get();
+      if (badgeQuery.docs.isNotEmpty) {
+        throw Exception('An authority with this Badge ID already exists.');
+      }
     }
 
     // Initialize temporary secondary app to create user without signing out current admin
@@ -356,5 +405,149 @@ class AuthService {
         .collection(AppConstants.authoritiesCollection)
         .doc(authorityDocId)
         .delete();
+  }
+
+  Future<void> seedDefaultUsers() async {
+    final snapshot = await _firestore
+        .collection(AppConstants.authoritiesCollection)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isNotEmpty) {
+      debugPrint('Authorities already exist, skipping seeding.');
+      return;
+    }
+
+    final List<Map<String, dynamic>> defaultUsers = [
+      {
+        'email': 'authority_ekm@nizhal.kerala.gov.in',
+        'password': 'AuthEkm2026!',
+        'name': 'Inspector Suresh Kumar',
+        'role': 'authority',
+        'badgeId': 'KP-EKM-001',
+        'jurisdiction': 'Ernakulam',
+        'specialization': 'narcotics',
+      },
+      {
+        'email': 'authority_tsr@nizhal.kerala.gov.in',
+        'password': 'AuthTsr2026!',
+        'name': 'DySP Madhavan Nair',
+        'role': 'authority',
+        'badgeId': 'KP-TSR-002',
+        'jurisdiction': 'Thrissur',
+        'specialization': 'investigation',
+      },
+      {
+        'email': 'authority_koz@nizhal.kerala.gov.in',
+        'password': 'AuthKoz2026!',
+        'name': 'SI Fathima Rahma',
+        'role': 'authority',
+        'badgeId': 'KP-KOZ-003',
+        'jurisdiction': 'Kozhikode',
+        'specialization': 'patrol',
+      },
+      {
+        'email': 'police@gmail.com',
+        'password': 'Police2026!',
+        'name': 'Police Authority Admin',
+        'role': 'authority',
+        'badgeId': 'KP-POL-100',
+        'jurisdiction': 'Ernakulam',
+        'specialization': 'investigation',
+      },
+      {
+        'email': 'excise@gmail.com',
+        'password': 'Excise2026!',
+        'name': 'Excise Authority Admin',
+        'role': 'authority',
+        'badgeId': 'KP-EXC-200',
+        'jurisdiction': 'Kozhikode',
+        'specialization': 'narcotics',
+      },
+    ];
+
+    for (final u in defaultUsers) {
+      try {
+        final email = u['email'] as String;
+        final password = u['password'] as String;
+        final name = u['name'] as String;
+        final role = u['role'] as String;
+        final badgeId = u['badgeId'] as String;
+        final jurisdiction = u['jurisdiction'] as String;
+        final specialization = u['specialization'] as String;
+
+        UserCredential? credential;
+        try {
+          final tempApp = await Firebase.initializeApp(
+            name:
+                'tempSeed_${u['email'].hashCode}_${DateTime.now().millisecondsSinceEpoch}',
+            options: Firebase.app().options,
+          );
+          final tempAuth = FirebaseAuth.instanceFor(app: tempApp);
+
+          credential = await tempAuth.createUserWithEmailAndPassword(
+            email: email,
+            password: password,
+          );
+          await tempApp.delete();
+        } on FirebaseAuthException catch (ae) {
+          if (ae.code == 'email-already-in-use') {
+            final tempApp = await Firebase.initializeApp(
+              name:
+                  'tempSeed_${u['email'].hashCode}_${DateTime.now().millisecondsSinceEpoch}',
+              options: Firebase.app().options,
+            );
+            final tempAuth = FirebaseAuth.instanceFor(app: tempApp);
+            try {
+              credential = await tempAuth.signInWithEmailAndPassword(
+                email: email,
+                password: password,
+              );
+            } catch (le) {
+              debugPrint('Sign in to existing seeded user failed: $le');
+            }
+            await tempApp.delete();
+          } else {
+            debugPrint('Failed to seed Auth user: ${ae.message}');
+          }
+        } catch (e) {
+          debugPrint('Temp app error for seed: $e');
+        }
+
+        if (credential != null && credential.user != null) {
+          final uid = credential.user!.uid;
+
+          await _firestore
+              .collection(AppConstants.usersCollection)
+              .doc(uid)
+              .set({
+                'uid': uid,
+                'email': email,
+                'role': role,
+                'displayName': name,
+                'status': AppConstants.userActive,
+                'createdAt': FieldValue.serverTimestamp(),
+                'updatedAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+
+          await _firestore
+              .collection(AppConstants.authoritiesCollection)
+              .doc(uid)
+              .set({
+                'email': email,
+                'name': name,
+                'badgeId': badgeId,
+                'jurisdiction': jurisdiction,
+                'specialization': specialization,
+                'isActive': true,
+                'assignedCaseCount': 0,
+                'createdAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+
+          debugPrint('Successfully seeded user and authority: $email');
+        }
+      } catch (e) {
+        debugPrint('Error seeding default user ${u['email']}: $e');
+      }
+    }
   }
 }

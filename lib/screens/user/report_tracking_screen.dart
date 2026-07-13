@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
 import '../../models/report_model.dart';
 import '../../models/status_log_model.dart';
 import '../../services/report_service.dart';
+import '../../services/auth_service.dart';
 
 /// Real-time report tracking screen with status timeline.
 class ReportTrackingScreen extends StatelessWidget {
@@ -13,19 +16,86 @@ class ReportTrackingScreen extends StatelessWidget {
 
   const ReportTrackingScreen({super.key, required this.reportId});
 
+  Future<bool> _checkAccessPermission(BuildContext context) async {
+    final authService = context.read<AuthService>();
+    final profile = await authService.getCurrentUserProfile();
+    if (profile == null) return false;
+
+    // Admins and Authorities have access
+    if (profile.role == 'admin' || profile.role == 'authority') {
+      return true;
+    }
+
+    // Citizen: Check if identity document exists under this report
+    final doc = await FirebaseFirestore.instance
+        .collection(AppConstants.reportsCollection)
+        .doc(reportId)
+        .collection(AppConstants.reportIdentitySubcollection)
+        .doc(profile.uid)
+        .get();
+    return doc.exists;
+  }
+
   @override
   Widget build(BuildContext context) {
     final reportService = context.read<ReportService>();
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: const Text('Report Status')),
-      body: StreamBuilder<ReportModel?>(
-        stream: reportService.reportStream(reportId),
-        builder: (context, reportSnap) {
-          if (reportSnap.connectionState == ConnectionState.waiting) {
+      appBar: AppBar(
+        title: const Text('Report Status'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/track');
+            }
+          },
+        ),
+      ),
+      body: FutureBuilder<bool>(
+        future: _checkAccessPermission(context),
+        builder: (context, authSnap) {
+          if (authSnap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+          if (authSnap.data != true) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.lock_outline, size: 64, color: AppColors.error),
+                    SizedBox(height: 16),
+                    Text(
+                      'Access Denied',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'You are not authorized to track this report. You can only track reports you have submitted.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return StreamBuilder<ReportModel?>(
+            stream: reportService.reportStream(reportId),
+            builder: (context, reportSnap) {
+              if (reportSnap.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
           final report = reportSnap.data;
           if (report == null) {
@@ -199,7 +269,9 @@ class ReportTrackingScreen extends StatelessWidget {
             ),
           );
         },
-      ),
+      );
+    },
+  ),
     );
   }
 

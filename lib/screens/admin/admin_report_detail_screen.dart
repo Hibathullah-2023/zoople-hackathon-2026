@@ -184,41 +184,277 @@ class AdminReportDetailScreen extends StatelessWidget {
                       }).toList(),
                     ),
                   ),
-                const SizedBox(height: 16),
-
-                // ─── Reporter Identity Notice ───
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.outlineVariant.withValues(alpha: 0.3),
+                // ─── Evidence Photos & AI Verification ───
+                if (report.mediaUrls.isNotEmpty) ...[
+                  _Section(
+                    label: 'ATTACHED EVIDENCE PHOTOS',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          height: 120,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: report.mediaUrls.length,
+                            itemBuilder: (context, index) {
+                              final url = report.mediaUrls[index];
+                              return Container(
+                                margin: const EdgeInsets.only(right: 12),
+                                width: 120,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.divider),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(7),
+                                  child: Image.network(
+                                    url,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Center(
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          color: AppColors.onSurfaceVariant,
+                                        ),
+                                      );
+                                    },
+                                    loadingBuilder: (context, child, progress) {
+                                      if (progress == null) return child;
+                                      return const Center(
+                                        child: CircularProgressIndicator(),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        if (report.photoAnalysis != null) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: (report.photoAnalysis!['status'] == 'Authentic'
+                                        ? AppColors.tertiary
+                                        : AppColors.error)
+                                    .withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      report.photoAnalysis!['status'] == 'Authentic'
+                                          ? Icons.verified_user
+                                          : report.photoAnalysis!['status'] == 'AI Generated'
+                                              ? Icons.psychology
+                                              : Icons.warning_amber_rounded,
+                                      color: report.photoAnalysis!['status'] == 'Authentic'
+                                          ? AppColors.tertiary
+                                          : AppColors.error,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'AI PHOTO ANALYSIS',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: report.photoAnalysis!['status'] == 'Authentic'
+                                            ? AppColors.tertiary
+                                            : AppColors.error,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: (report.photoAnalysis!['status'] == 'Authentic'
+                                                ? AppColors.tertiary
+                                                : AppColors.error)
+                                            .withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        '${report.photoAnalysis!['confidence']}% Match',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: report.photoAnalysis!['status'] == 'Authentic'
+                                              ? AppColors.tertiary
+                                              : AppColors.error,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Classification: ${report.photoAnalysis!['status']}',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                const Divider(color: AppColors.divider),
+                                const SizedBox(height: 4),
+                                ...((report.photoAnalysis!['findings'] as List<dynamic>?) ?? [])
+                                    .map((finding) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 4),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('• ', style: TextStyle(color: AppColors.onSurfaceVariant)),
+                                        Expanded(
+                                          child: Text(
+                                            finding.toString(),
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.visibility_off,
-                        color: AppColors.secondary,
-                        size: 20,
+                  const SizedBox(height: 16),
+                ],
+
+                // ─── Reporter Identity Notice ───
+                // ─── Reporter Identity Notice / Display ───
+                if (report.isAnonymous)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.outlineVariant.withValues(alpha: 0.3),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Reporter identity is encrypted and hidden. Only the reporter can view their own identity.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.onSurfaceVariant.withValues(
-                              alpha: 0.7,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.visibility_off,
+                          color: AppColors.secondary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Reporter identity is masked (Anonymous Mode is active).',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.onSurfaceVariant.withValues(
+                                alpha: 0.7,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  )
+                else
+                  StreamBuilder<ReportIdentity?>(
+                    stream: reportService.reportIdentityStream(report.reportId),
+                    builder: (context, identitySnap) {
+                      if (identitySnap.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final identity = identitySnap.data;
+                      if (identity == null) {
+                        return Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.divider),
+                          ),
+                          child: const Text(
+                            'Reporter identity could not be retrieved.',
+                            style: TextStyle(
+                              color: AppColors.error,
+                              fontSize: 12,
+                            ),
+                          ),
+                        );
+                      }
+
+                      return FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection(AppConstants.usersCollection)
+                            .doc(identity.reporterUid)
+                            .get(),
+                        builder: (context, userSnap) {
+                          final userData =
+                              userSnap.data?.data() as Map<String, dynamic>?;
+                          final displayName =
+                              userData?['displayName'] ?? 'Citizen User';
+                          final phone = userData?['phone'] ?? 'Not provided';
+
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.divider),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.visibility,
+                                      color: AppColors.secondary,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'REPORTER IDENTITY (OPT-IN REVEAL)',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.secondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                _DetailRow('Name', displayName),
+                                _DetailRow('Email', identity.reporterEmail),
+                                _DetailRow('Phone', phone),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
                   ),
-                ),
                 const SizedBox(height: 24),
 
                 // ─── Action Buttons ───
@@ -422,29 +658,28 @@ class AdminReportDetailScreen extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceContainerHigh,
         title: const Text('Update Status'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: AppConstants.statusPipeline.map((s) {
-            return ListTile(
-              title: Text(s.replaceAll('_', ' ').toUpperCase()),
-              leading: Radio<String>(
-                value: s,
-                groupValue: report.status,
-                onChanged: (val) async {
-                  if (val == null) return;
-                  Navigator.pop(ctx);
-                  final adminUid =
-                      context.read<AuthService>().currentUser?.uid ?? '';
-                  await context.read<ReportService>().updateReportStatus(
-                    reportId: report.reportId,
-                    newStatus: val,
-                    changedBy: adminUid,
-                    changedByRole: 'admin',
-                  );
-                },
-              ),
+        content: RadioGroup<String>(
+          groupValue: report.status,
+          onChanged: (val) async {
+            if (val == null) return;
+            Navigator.pop(ctx);
+            final adminUid = context.read<AuthService>().currentUser?.uid ?? '';
+            await context.read<ReportService>().updateReportStatus(
+              reportId: report.reportId,
+              newStatus: val,
+              changedBy: adminUid,
+              changedByRole: 'admin',
             );
-          }).toList(),
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: AppConstants.statusPipeline.map((s) {
+              return ListTile(
+                title: Text(s.replaceAll('_', ' ').toUpperCase()),
+                leading: Radio<String>(value: s),
+              );
+            }).toList(),
+          ),
         ),
       ),
     );

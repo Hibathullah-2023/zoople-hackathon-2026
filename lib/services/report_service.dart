@@ -42,6 +42,7 @@ class ReportService {
     String? district,
     String? pincode,
     List<String> mediaUrls = const [],
+    Map<String, dynamic>? photoAnalysis,
   }) async {
     // 1. Generate report ID
     final reportId = _generateReportId();
@@ -89,6 +90,7 @@ class ReportService {
       keywords: keywords,
       isAnonymous: isAnonymous,
       mediaCount: mediaUrls.length,
+      photoAnalysis: photoAnalysis,
     );
 
     final batch = _firestore.batch();
@@ -514,5 +516,18 @@ class ReportService {
         .doc('global')
         .snapshots()
         .map((doc) => doc.exists ? doc.data() : null);
+  }
+
+  /// Stream the identity of a report from the subcollection
+  Stream<ReportIdentity?> reportIdentityStream(String reportId) {
+    return _firestore
+        .collection(AppConstants.reportsCollection)
+        .doc(reportId)
+        .collection(AppConstants.reportIdentitySubcollection)
+        .snapshots()
+        .map((snap) {
+          if (snap.docs.isEmpty) return null;
+          return ReportIdentity.fromFirestore(snap.docs.first);
+        });
   }
 }

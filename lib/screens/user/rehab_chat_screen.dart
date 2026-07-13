@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 import '../../constants/app_colors.dart';
 import '../../constants/kerala_locations.dart';
@@ -16,6 +18,63 @@ class RehabChatScreen extends StatefulWidget {
 }
 
 class _RehabChatScreenState extends State<RehabChatScreen> {
+  String? _detectedDistrict;
+
+  @override
+  void initState() {
+    super.initState();
+    _detectCurrentDistrict();
+  }
+
+  Future<void> _detectCurrentDistrict() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        final position =
+            await Geolocator.getLastKnownPosition() ??
+            await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.low,
+                timeLimit: Duration(seconds: 10),
+              ),
+            );
+        List<Placemark> placemarks = [];
+        try {
+          placemarks = await placemarkFromCoordinates(
+            position.latitude,
+            position.longitude,
+          );
+        } catch (_) {}
+
+        if (placemarks.isNotEmpty) {
+          final pm = placemarks.first;
+          final cleanSubAdmin = (pm.subAdministrativeArea ?? '').toLowerCase();
+          final cleanLocality = (pm.locality ?? '').toLowerCase();
+
+          for (final district in KeralaLocations.districts) {
+            if (cleanSubAdmin.contains(district.toLowerCase()) ||
+                cleanLocality.contains(district.toLowerCase()) ||
+                (pm.administrativeArea ?? '').toLowerCase().contains(
+                  district.toLowerCase(),
+                )) {
+              if (mounted) {
+                setState(() {
+                  _detectedDistrict = district;
+                  _selectedDistrict = district;
+                });
+              }
+              break;
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   // Chatbot State
   final List<Map<String, dynamic>> _messages = [
     {
@@ -313,7 +372,7 @@ class _RehabChatScreenState extends State<RehabChatScreen> {
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: DropdownButtonFormField<String>(
-                    value: _selectedDistrict,
+                    initialValue: _selectedDistrict,
                     dropdownColor: AppColors.surfaceContainerHigh,
                     decoration: const InputDecoration(
                       labelText: 'Filter by District',
@@ -340,9 +399,23 @@ class _RehabChatScreenState extends State<RehabChatScreen> {
                 ),
                 Expanded(
                   child: () {
+                    final List<Map<String, String>> sortedCentres =
+                        List<Map<String, String>>.from(_centres)..sort((a, b) {
+                          if (_detectedDistrict != null) {
+                            final matchA = a['district'] == _detectedDistrict
+                                ? 0
+                                : 1;
+                            final matchB = b['district'] == _detectedDistrict
+                                ? 0
+                                : 1;
+                            return matchA.compareTo(matchB);
+                          }
+                          return 0;
+                        });
+
                     final filteredCentres = _selectedDistrict == null
-                        ? _centres
-                        : _centres
+                        ? sortedCentres
+                        : sortedCentres
                               .where((c) => c['district'] == _selectedDistrict)
                               .toList();
 
@@ -362,7 +435,7 @@ class _RehabChatScreenState extends State<RehabChatScreen> {
                     return ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: filteredCentres.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final centre = filteredCentres[index];
                         return Container(

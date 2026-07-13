@@ -28,6 +28,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<ReportModel> _currentReports = [];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<AuthService>().seedDefaultUsers();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final reportService = context.read<ReportService>();
 
@@ -82,14 +92,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
           // Apply local filtering
           _currentReports = _allReports.where((r) {
-            if (_statusFilter != null && r.status != _statusFilter)
+            if (_statusFilter != null && r.status != _statusFilter) {
               return false;
-            if (_priorityFilter != null && r.priority != _priorityFilter)
+            }
+            if (_priorityFilter != null && r.priority != _priorityFilter) {
               return false;
-            if (_categoryFilter != null && r.category != _categoryFilter)
+            }
+            if (_categoryFilter != null && r.category != _categoryFilter) {
               return false;
-            if (_districtFilter != null && r.district != _districtFilter)
+            }
+            if (_districtFilter != null && r.district != _districtFilter) {
               return false;
+            }
             return true;
           }).toList();
 
@@ -107,7 +121,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: _statusFilter,
+                            initialValue: _statusFilter,
                             dropdownColor: AppColors.surfaceContainerHigh,
                             style: const TextStyle(
                               color: Colors.white,
@@ -154,7 +168,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: _priorityFilter,
+                            initialValue: _priorityFilter,
                             dropdownColor: AppColors.surfaceContainerHigh,
                             style: const TextStyle(
                               color: Colors.white,
@@ -205,7 +219,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: _categoryFilter,
+                            initialValue: _categoryFilter,
                             dropdownColor: AppColors.surfaceContainerHigh,
                             style: const TextStyle(
                               color: Colors.white,
@@ -253,7 +267,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: _districtFilter,
+                            initialValue: _districtFilter,
                             dropdownColor: AppColors.surfaceContainerHigh,
                             style: const TextStyle(
                               color: Colors.white,
@@ -346,7 +360,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     : ListView.separated(
                         padding: const EdgeInsets.all(16),
                         itemCount: _currentReports.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           final report = _currentReports[index];
                           return _AdminReportCard(

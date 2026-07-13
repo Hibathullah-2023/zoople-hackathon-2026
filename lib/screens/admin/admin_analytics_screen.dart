@@ -5,14 +5,22 @@ import 'package:go_router/go_router.dart';
 
 import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
+import '../../constants/kerala_locations.dart';
 import '../../models/report_model.dart';
 import '../../services/report_service.dart';
 import '../../services/auth_service.dart';
 
-/// Admin Home Page / Dashboard screen showing the Curve Graph first,
-/// then Predictive Trend Analysis, Recent Reports list, and overall charts.
-class AdminAnalyticsScreen extends StatelessWidget {
+/// Admin Home Page / Dashboard screen showing the Curve Graph first with toggles,
+/// then Predictive Hotspot and Trend Analysis, Recent Reports, and overall charts.
+class AdminAnalyticsScreen extends StatefulWidget {
   const AdminAnalyticsScreen({super.key});
+
+  @override
+  State<AdminAnalyticsScreen> createState() => _AdminAnalyticsScreenState();
+}
+
+class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
+  String _graphTimeFrame = 'day'; // 'day' | 'month' | 'year'
 
   Widget _buildCurveGraph(List<ReportModel> reports) {
     if (reports.isEmpty) {
@@ -35,21 +43,43 @@ class AdminAnalyticsScreen extends StatelessWidget {
     final sortedReports = List<ReportModel>.from(reports)
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-    final Map<String, int> dailyCounts = {};
+    final Map<String, int> groupedCounts = {};
     for (final r in sortedReports) {
-      final dateKey =
-          "${r.createdAt.year}-${r.createdAt.month.toString().padLeft(2, '0')}-${r.createdAt.day.toString().padLeft(2, '0')}";
-      dailyCounts[dateKey] = (dailyCounts[dateKey] ?? 0) + 1;
+      String key;
+      if (_graphTimeFrame == 'day') {
+        key =
+            "${r.createdAt.year}-${r.createdAt.month.toString().padLeft(2, '0')}-${r.createdAt.day.toString().padLeft(2, '0')}";
+      } else if (_graphTimeFrame == 'month') {
+        key =
+            "${r.createdAt.year}-${r.createdAt.month.toString().padLeft(2, '0')}";
+      } else {
+        key = "${r.createdAt.year}";
+      }
+      groupedCounts[key] = (groupedCounts[key] ?? 0) + 1;
     }
 
-    final dailyEntries = dailyCounts.entries.toList();
-    final lastEntries = dailyEntries.length > 7
-        ? dailyEntries.sublist(dailyEntries.length - 7)
-        : dailyEntries;
+    final entries = groupedCounts.entries.toList();
+    final List<MapEntry<String, int>> displayedEntries;
+    if (_graphTimeFrame == 'day') {
+      displayedEntries = entries.length > 7
+          ? entries.sublist(entries.length - 7)
+          : entries;
+    } else if (_graphTimeFrame == 'month') {
+      displayedEntries = entries.length > 12
+          ? entries.sublist(entries.length - 12)
+          : entries;
+    } else {
+      displayedEntries = entries;
+    }
 
     final List<FlSpot> spots = [];
-    for (int i = 0; i < lastEntries.length; i++) {
-      spots.add(FlSpot(i.toDouble(), lastEntries[i].value.toDouble()));
+    int maxCount = 0;
+    for (int i = 0; i < displayedEntries.length; i++) {
+      final val = displayedEntries[i].value;
+      if (val > maxCount) {
+        maxCount = val;
+      }
+      spots.add(FlSpot(i.toDouble(), val.toDouble()));
     }
 
     return Container(
@@ -62,6 +92,8 @@ class AdminAnalyticsScreen extends StatelessWidget {
       ),
       child: LineChart(
         LineChartData(
+          minY: 0,
+          maxY: (maxCount > 0 ? maxCount + 1 : 5).toDouble(),
           gridData: const FlGridData(show: false),
           titlesData: FlTitlesData(
             topTitles: const AxisTitles(
@@ -75,14 +107,53 @@ class AdminAnalyticsScreen extends StatelessWidget {
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
                   final idx = value.toInt();
-                  if (idx >= 0 && idx < lastEntries.length) {
-                    final dateStr = lastEntries[idx].key;
-                    final parts = dateStr.split('-');
-                    if (parts.length == 3) {
+                  if (idx >= 0 && idx < displayedEntries.length) {
+                    final keyStr = displayedEntries[idx].key;
+                    final parts = keyStr.split('-');
+                    if (_graphTimeFrame == 'day' && parts.length == 3) {
                       return Padding(
                         padding: const EdgeInsets.only(top: 8.0),
                         child: Text(
                           "${parts[1]}/${parts[2]}",
+                          style: const TextStyle(
+                            fontSize: 9,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      );
+                    } else if (_graphTimeFrame == 'month' &&
+                        parts.length == 2) {
+                      const monthNames = [
+                        'Jan',
+                        'Feb',
+                        'Mar',
+                        'Apr',
+                        'May',
+                        'Jun',
+                        'Jul',
+                        'Aug',
+                        'Sep',
+                        'Oct',
+                        'Nov',
+                        'Dec',
+                      ];
+                      final mIdx = int.tryParse(parts[1]) ?? 1;
+                      final mName = monthNames[(mIdx - 1).clamp(0, 11)];
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          "$mName '${parts[0].substring(2)}",
+                          style: const TextStyle(
+                            fontSize: 9,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      );
+                    } else {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          keyStr,
                           style: const TextStyle(
                             fontSize: 9,
                             color: AppColors.onSurfaceVariant,
@@ -199,6 +270,55 @@ class AdminAnalyticsScreen extends StatelessWidget {
         ? Icons.trending_up
         : (slope < -0.05 ? Icons.trending_down : Icons.trending_flat);
 
+    // ─── Predicted Hotspot and Precautionary Advice ───
+    final now = DateTime.now();
+    final fifteenDaysAgo = now.subtract(const Duration(days: 15));
+    final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+
+    final Map<String, int> recentCounts = {};
+    final Map<String, int> previousCounts = {};
+
+    for (final r in reports) {
+      if (r.district == null) continue;
+      final dist = r.district!;
+      if (r.createdAt.isAfter(fifteenDaysAgo)) {
+        recentCounts[dist] = (recentCounts[dist] ?? 0) + 1;
+      } else if (r.createdAt.isAfter(thirtyDaysAgo)) {
+        previousCounts[dist] = (previousCounts[dist] ?? 0) + 1;
+      }
+    }
+
+    String? hotspotDistrict;
+    int maxGrowth = -999;
+    int maxTotal = 0;
+
+    for (final district in KeralaLocations.districts) {
+      final recent = recentCounts[district] ?? 0;
+      final prev = previousCounts[district] ?? 0;
+      final growth = recent - prev;
+      final total = recent + prev;
+
+      if (growth > maxGrowth) {
+        maxGrowth = growth;
+        hotspotDistrict = district;
+        maxTotal = total;
+      } else if (growth == maxGrowth && total > maxTotal) {
+        hotspotDistrict = district;
+        maxTotal = total;
+      }
+    }
+
+    hotspotDistrict ??= 'Ernakulam';
+
+    String precautionAdvice;
+    if (maxGrowth > 0) {
+      precautionAdvice =
+          "⚠️ Alert: $hotspotDistrict has shown a sharp upward growth of +$maxGrowth cases recently. Precaution: We recommend deploying additional patrols in key public parks, increasing surveillance near school borders, and running targeted awareness campaigns in local community centers.";
+    } else {
+      precautionAdvice =
+          "🛡️ Stable Trend: $hotspotDistrict remains the district with highest reporting density (~$maxTotal cases). Precaution: Maintain active community watch groups and coordinate with the local excise station for routine inspection of logistics hubs.";
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -215,7 +335,7 @@ class AdminAnalyticsScreen extends StatelessWidget {
               const Icon(Icons.psychology, color: AppColors.secondary),
               const SizedBox(width: 8),
               const Text(
-                'Predictive Trend Analysis',
+                'Predictive Trend Analysis & Hotspots',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
@@ -268,7 +388,7 @@ class AdminAnalyticsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   const Text(
-                    'PREDICTED (NEXT MONTH)',
+                    'PROJECTED HOTSPOT',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -277,14 +397,36 @@ class AdminAnalyticsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '~ $predictedNext cases',
+                    hotspotDistrict,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.w800,
                       color: AppColors.secondary,
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'PREDICTED (NEXT MONTH GLOBAL):',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.onSurfaceVariant,
+                ),
+              ),
+              Text(
+                '~ $predictedNext cases',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.tertiary,
+                ),
               ),
             ],
           ),
@@ -294,19 +436,44 @@ class AdminAnalyticsScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surfaceContainerLow,
               borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.divider),
             ),
             child: Text(
-              slope > 0.05
-                  ? '⚠️ Warning: Upward case projection. We recommend increasing surveillance and allocating additional authorities to rising hotspots.'
-                  : '✅ Notice: Containment trend is stable or decreasing. Continue supporting rehab centers and active local awareness campaigns.',
+              precautionAdvice,
               style: TextStyle(
                 fontSize: 11,
-                color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.9),
                 height: 1.4,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTimeToggle(String label, String value) {
+    final isSelected = _graphTimeFrame == value;
+    return TextButton(
+      onPressed: () {
+        setState(() {
+          _graphTimeFrame = value;
+        });
+      },
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        minimumSize: Size.zero,
+        foregroundColor: isSelected
+            ? AppColors.secondary
+            : AppColors.onSurfaceVariant,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          decoration: isSelected ? TextDecoration.underline : null,
+        ),
       ),
     );
   }
@@ -363,13 +530,25 @@ class AdminAnalyticsScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ─── Curve Graph (TIMELINE OF REPORTS) ───
-                const Text(
-                  'Incident Reports Timeline',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.onSurface,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Incident Reports Timeline',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        _buildTimeToggle('Day', 'day'),
+                        _buildTimeToggle('Month', 'month'),
+                        _buildTimeToggle('Year', 'year'),
+                      ],
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 _buildCurveGraph(reports),
@@ -427,7 +606,7 @@ class AdminAnalyticsScreen extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                // ─── Summary Cards ───
+                // ─── Case Summary Statistics ───
                 const Text(
                   'Case Summary Statistics',
                   style: TextStyle(

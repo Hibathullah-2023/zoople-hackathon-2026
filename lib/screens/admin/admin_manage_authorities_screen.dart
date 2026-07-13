@@ -40,7 +40,7 @@ class _AdminManageAuthoritiesScreenState
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _jurisdictionFilter,
+                    initialValue: _jurisdictionFilter,
                     dropdownColor: AppColors.surfaceContainerHigh,
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                     decoration: const InputDecoration(
@@ -82,7 +82,7 @@ class _AdminManageAuthoritiesScreenState
                 const SizedBox(width: 8),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _specializationFilter,
+                    initialValue: _specializationFilter,
                     dropdownColor: AppColors.surfaceContainerHigh,
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                     decoration: const InputDecoration(
@@ -156,11 +156,13 @@ class _AdminManageAuthoritiesScreenState
                 // Apply local filtering
                 final filteredAuthorities = authorities.where((auth) {
                   if (_jurisdictionFilter != null &&
-                      auth.jurisdiction != _jurisdictionFilter)
+                      auth.jurisdiction != _jurisdictionFilter) {
                     return false;
+                  }
                   if (_specializationFilter != null &&
-                      auth.specialization != _specializationFilter)
+                      auth.specialization != _specializationFilter) {
                     return false;
+                  }
                   return true;
                 }).toList();
 
@@ -192,7 +194,7 @@ class _AdminManageAuthoritiesScreenState
                     vertical: 8,
                   ),
                   itemCount: filteredAuthorities.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     return _AuthorityCard(
                       authority: filteredAuthorities[index],
@@ -260,7 +262,7 @@ class _AdminManageAuthoritiesScreenState
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: selectedJurisdiction,
+                  initialValue: selectedJurisdiction,
                   dropdownColor: AppColors.surfaceContainerHigh,
                   decoration: const InputDecoration(
                     labelText: 'Jurisdiction (District)',
@@ -274,7 +276,7 @@ class _AdminManageAuthoritiesScreenState
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: selectedSpecialization,
+                  initialValue: selectedSpecialization,
                   dropdownColor: AppColors.surfaceContainerHigh,
                   decoration: const InputDecoration(
                     labelText: 'Specialization',
@@ -455,7 +457,7 @@ class _AuthorityCard extends StatelessWidget {
           // ─── Active/Inactive Switch Toggle ───
           Switch(
             value: authority.isActive,
-            activeColor: AppColors.secondary,
+            activeThumbColor: AppColors.secondary,
             onChanged: (val) async {
               try {
                 await context.read<AuthService>().updateAuthority(
@@ -528,7 +530,7 @@ class _AuthorityCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: selectedJurisdiction,
+                  initialValue: selectedJurisdiction,
                   dropdownColor: AppColors.surfaceContainerHigh,
                   decoration: const InputDecoration(
                     labelText: 'Jurisdiction (District)',
@@ -542,7 +544,7 @@ class _AuthorityCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: selectedSpecialization,
+                  initialValue: selectedSpecialization,
                   dropdownColor: AppColors.surfaceContainerHigh,
                   decoration: const InputDecoration(
                     labelText: 'Specialization',
@@ -566,7 +568,7 @@ class _AuthorityCard extends StatelessWidget {
                 SwitchListTile(
                   title: const Text('Active Status'),
                   value: isActive,
-                  activeColor: AppColors.secondary,
+                  activeThumbColor: AppColors.secondary,
                   onChanged: (val) => setDialogState(() => isActive = val),
                 ),
               ],

@@ -25,6 +25,7 @@ class ReportModel {
   final List<String> keywords; // Auto-extracted from description
   final bool isAnonymous; // Reporter's global preference at time of submission
   final int mediaCount;
+  final Map<String, dynamic>? photoAnalysis; // AI photo analysis output
 
   const ReportModel({
     required this.reportId,
@@ -48,6 +49,7 @@ class ReportModel {
     this.keywords = const [],
     this.isAnonymous = true,
     this.mediaCount = 0,
+    this.photoAnalysis,
   });
 
   /// Whether this report is still active (not resolved/closed/fake)
@@ -82,6 +84,7 @@ class ReportModel {
       keywords: List<String>.from(data['keywords'] ?? []),
       isAnonymous: data['isAnonymous'] ?? true,
       mediaCount: data['mediaCount'] ?? 0,
+      photoAnalysis: data['photoAnalysis'] as Map<String, dynamic>?,
     );
   }
 
@@ -108,6 +111,7 @@ class ReportModel {
       'keywords': keywords,
       'isAnonymous': isAnonymous,
       'mediaCount': mediaCount,
+      'photoAnalysis': photoAnalysis,
     };
   }
 
@@ -134,6 +138,7 @@ class ReportModel {
     List<String>? keywords,
     bool? isAnonymous,
     int? mediaCount,
+    Map<String, dynamic>? photoAnalysis,
   }) {
     return ReportModel(
       reportId: reportId ?? this.reportId,
@@ -157,6 +162,7 @@ class ReportModel {
       keywords: keywords ?? this.keywords,
       isAnonymous: isAnonymous ?? this.isAnonymous,
       mediaCount: mediaCount ?? this.mediaCount,
+      photoAnalysis: photoAnalysis ?? this.photoAnalysis,
     );
   }
 }

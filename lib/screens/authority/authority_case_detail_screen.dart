@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
@@ -21,7 +22,19 @@ class AuthorityCaseDetailScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: const Text('Case Detail')),
+      appBar: AppBar(
+        title: const Text('Case Detail'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/authority');
+            }
+          },
+        ),
+      ),
       body: StreamBuilder<ReportModel?>(
         stream: reportService.reportStream(reportId),
         builder: (context, snapshot) {
@@ -109,6 +122,41 @@ class AuthorityCaseDetailScreen extends StatelessWidget {
                       _DetailRow('Address', report.locationAddress ?? '—'),
                       _DetailRow('Photos', '${report.mediaCount} attached'),
                       _DetailRow('Submitted', _formatDate(report.createdAt)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // ─── Reporter Identity Restricted notice for Authorities ───
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.outlineVariant.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.visibility_off,
+                        color: AppColors.secondary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Reporter identity is restricted (visible to Admin only).',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.onSurfaceVariant.withValues(
+                              alpha: 0.7,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),

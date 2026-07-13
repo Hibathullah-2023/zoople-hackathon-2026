@@ -11,6 +11,7 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       fontFamily: GoogleFonts.inter().fontFamily,
+      fontFamilyFallback: const ['sans-serif', 'Arial'],
 
       // ─── Color Scheme ───
       colorScheme: const ColorScheme.dark(
@@ -57,9 +58,7 @@ class AppTheme {
           color: AppColors.secondary,
           height: 1.4,
         ),
-        iconTheme: const IconThemeData(
-          color: AppColors.primaryFixedDim,
-        ),
+        iconTheme: const IconThemeData(color: AppColors.primaryFixedDim),
       ),
 
       // ─── Bottom Navigation ───
@@ -79,10 +78,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(
-            color: AppColors.cardBorderTop,
-            width: 1,
-          ),
+          side: const BorderSide(color: AppColors.cardBorderTop, width: 1),
         ),
       ),
 
@@ -105,24 +101,15 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: AppColors.tertiary,
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: AppColors.tertiary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: AppColors.error,
-            width: 1,
-          ),
+          borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: AppColors.error,
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
         ),
       ),
 
@@ -152,9 +139,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          side: const BorderSide(
-            color: AppColors.outlineVariant,
-          ),
+          side: const BorderSide(color: AppColors.outlineVariant),
           textStyle: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -194,9 +179,7 @@ class AppTheme {
           color: AppColors.onSurface,
           fontSize: 14,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         behavior: SnackBarBehavior.floating,
       ),
 
@@ -204,9 +187,7 @@ class AppTheme {
       dialogTheme: DialogThemeData(
         backgroundColor: AppColors.surfaceContainerHigh,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         titleTextStyle: GoogleFonts.inter(
           fontSize: 20,
           fontWeight: FontWeight.w600,
@@ -226,95 +207,92 @@ class AppTheme {
           fontSize: 12,
           fontWeight: FontWeight.w500,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        side: const BorderSide(
-          color: AppColors.outlineVariant,
-          width: 0.5,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        side: const BorderSide(color: AppColors.outlineVariant, width: 0.5),
       ),
 
       // ─── Text Theme ───
-      textTheme: TextTheme(
-        // Headlines
-        headlineLarge: GoogleFonts.inter(
-          fontSize: 32,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.32,
-          height: 1.25,
-          color: AppColors.onSurface,
-        ),
-        headlineMedium: GoogleFonts.inter(
-          fontSize: 24,
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.24,
-          height: 1.33,
-          color: AppColors.onSurface,
-        ),
-        headlineSmall: GoogleFonts.inter(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          height: 1.4,
-          color: AppColors.onSurface,
-        ),
-        // Title
-        titleLarge: GoogleFonts.inter(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          height: 1.56,
-          color: AppColors.onSurface,
-        ),
-        titleMedium: GoogleFonts.inter(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          height: 1.5,
-          color: AppColors.onSurface,
-        ),
-        titleSmall: GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          height: 1.43,
-          color: AppColors.onSurface,
-        ),
-        // Body
-        bodyLarge: GoogleFonts.inter(
-          fontSize: 18,
-          fontWeight: FontWeight.w400,
-          height: 1.56,
-          color: AppColors.onSurface,
-        ),
-        bodyMedium: GoogleFonts.inter(
-          fontSize: 16,
-          fontWeight: FontWeight.w400,
-          height: 1.5,
-          color: AppColors.onSurface,
-        ),
-        bodySmall: GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-          height: 1.43,
-          color: AppColors.onSurfaceVariant,
-        ),
-        // Labels
-        labelLarge: GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          height: 1.43,
-          color: AppColors.onSurface,
-        ),
-        labelMedium: GoogleFonts.inter(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.6,
-          height: 1.33,
-          color: AppColors.onSurface,
-        ),
-        labelSmall: GoogleFonts.inter(
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-          height: 1.27,
-          color: AppColors.onSurfaceVariant,
+      textTheme: GoogleFonts.interTextTheme(
+        TextTheme(
+          // Headlines
+          headlineLarge: GoogleFonts.inter(
+            fontSize: 32,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.32,
+            height: 1.25,
+            color: AppColors.onSurface,
+          ),
+          headlineMedium: GoogleFonts.inter(
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.24,
+            height: 1.33,
+            color: AppColors.onSurface,
+          ),
+          headlineSmall: GoogleFonts.inter(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            height: 1.4,
+            color: AppColors.onSurface,
+          ),
+          // Title
+          titleLarge: GoogleFonts.inter(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            height: 1.56,
+            color: AppColors.onSurface,
+          ),
+          titleMedium: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            height: 1.5,
+            color: AppColors.onSurface,
+          ),
+          titleSmall: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            height: 1.43,
+            color: AppColors.onSurface,
+          ),
+          // Body
+          bodyLarge: GoogleFonts.inter(
+            fontSize: 18,
+            fontWeight: FontWeight.w400,
+            height: 1.56,
+            color: AppColors.onSurface,
+          ),
+          bodyMedium: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w400,
+            height: 1.5,
+            color: AppColors.onSurface,
+          ),
+          bodySmall: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            height: 1.43,
+            color: AppColors.onSurfaceVariant,
+          ),
+          // Labels
+          labelLarge: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            height: 1.43,
+            color: AppColors.onSurface,
+          ),
+          labelMedium: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.6,
+            height: 1.33,
+            color: AppColors.onSurface,
+          ),
+          labelSmall: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            height: 1.27,
+            color: AppColors.onSurfaceVariant,
+          ),
         ),
       ),
     );

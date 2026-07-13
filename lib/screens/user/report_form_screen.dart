@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +13,7 @@ import 'package:geocoding/geocoding.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/kerala_locations.dart';
+import '../../services/image_analyzer_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/report_service.dart';
 
@@ -126,22 +129,36 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      Position position = await Geolocator.getCurrentPosition(
+      final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
           timeLimit: Duration(seconds: 10),
         ),
       );
 
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
+      List<Placemark> placemarks = [];
+      if (!kIsWeb) {
+        try {
+          placemarks = await placemarkFromCoordinates(
+            position.latitude,
+            position.longitude,
+          );
+        } catch (geocodingError) {
+          debugPrint(
+            'Geocoding is not supported or failed on this platform: $geocodingError',
+          );
+        }
+      }
+
+      String? detectedDistrict;
+      String? detectedCity;
+      String address = '';
 
       if (placemarks.isNotEmpty) {
         final pm = placemarks.first;
-        String? detectedDistrict;
-        String? detectedCity = pm.locality ?? pm.subLocality ?? pm.name;
+        detectedCity = pm.locality ?? pm.subLocality ?? pm.name;
+        address =
+            '${pm.name ?? ""}, ${pm.street ?? ""}, ${pm.postalCode ?? ""}';
 
         final cleanSubAdmin = (pm.subAdministrativeArea ?? '').toLowerCase();
         final cleanLocality = (pm.locality ?? '').toLowerCase();
@@ -156,30 +173,51 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
             break;
           }
         }
+      }
 
-        detectedDistrict ??= 'Ernakulam';
+      detectedDistrict ??= _selectedDistrict ?? 'Ernakulam';
+      detectedCity ??= _selectedCity ?? 'Detected Location';
+      if (address.isEmpty) {
+        address =
+            'GPS: ${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+      }
 
-        setState(() {
-          _selectedDistrict = detectedDistrict;
-          _selectedCity = detectedCity;
-          _addressController.text =
-              '${pm.name ?? ""}, ${pm.street ?? ""}, ${pm.postalCode ?? ""}';
-          _gpsCoordinates = GeoPoint(position.latitude, position.longitude);
-        });
+      setState(() {
+        _selectedDistrict = detectedDistrict;
+        _selectedCity = detectedCity;
+        _addressController.text = address;
+        _gpsCoordinates = GeoPoint(position.latitude, position.longitude);
+      });
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Location detected: $detectedCity, $detectedDistrict',
-              ),
-              backgroundColor: AppColors.secondary,
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Location detected: $detectedCity, $detectedDistrict',
             ),
-          );
-        }
+            backgroundColor: AppColors.secondary,
+          ),
+        );
       }
     } catch (e) {
-      _showError('Failed to get location details: $e');
+      String msg = 'Failed to get location details: $e';
+      final eStr = e.toString().toLowerCase();
+      if (eStr.contains('timeout')) {
+        msg =
+            'GPS request timed out. Please ensure your device GPS is turned on and you have a clear sky view, or select your location manually.';
+      } else if (eStr.contains('permission') || eStr.contains('denied')) {
+        msg =
+            'Location permission was denied. Please enable location permissions for Nizhal in your browser or device settings.';
+      } else if (eStr.contains('secure') ||
+          eStr.contains('http') ||
+          eStr.contains('origin')) {
+        msg =
+            'Location Blocked: Web browsers block GPS access on insecure HTTP connections. Please enter your district and location manually, or connect via HTTPS.';
+      } else if (eStr.contains('disabled') || eStr.contains('service')) {
+        msg =
+            'Device GPS services are disabled. Please enable location/GPS in your system settings.';
+      }
+      _showError(msg);
     } finally {
       setState(() => _isSubmitting = false);
     }
@@ -295,21 +333,71 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
       }
 
       final mediaUrls = <String>[];
-      for (final photo in _photos) {
-        final ref = FirebaseStorage.instance
-            .ref()
-            .child('evidence')
-            .child('${DateTime.now().millisecondsSinceEpoch}_${photo.name}');
-        final bytes = await photo.readAsBytes();
-        final uploadTask = ref.putData(
-          bytes,
-          SettableMetadata(contentType: 'image/jpeg'),
+      bool uploadFailed = false;
+      Map<String, dynamic>? photoAnalysis;
+
+      if (_photos.isNotEmpty) {
+        photoAnalysis = ImageAnalyzerService.analyzeImage(_photos.first);
+        try {
+          for (final photo in _photos) {
+            final ref = FirebaseStorage.instance
+                .ref()
+                .child('evidence')
+                .child(
+                  '${DateTime.now().millisecondsSinceEpoch}_${photo.name}',
+                );
+            final bytes = await photo.readAsBytes();
+            final uploadTask = ref.putData(
+              bytes,
+              SettableMetadata(contentType: 'image/jpeg'),
+            );
+            final taskSnapshot = await uploadTask.timeout(
+              const Duration(seconds: 15),
+            );
+            final url = await taskSnapshot.ref.getDownloadURL();
+            mediaUrls.add(url);
+          }
+        } catch (uploadError) {
+          uploadFailed = true;
+          debugPrint('Upload error caught: $uploadError');
+        }
+      }
+
+      if (uploadFailed) {
+        setState(() => _isSubmitting = false);
+        if (!mounted) return;
+        final proceedWithoutPhotos = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('⚠️ Evidence Upload Blocked'),
+              content: const Text(
+                'Nizhal encountered a Firebase Storage upload failure (this is common on local web development due to CORS preflight policies or network timeouts).\n\n'
+                'Would you like to submit the report text and location details without the attached photos/evidence?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel / Try Again'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.secondary,
+                    foregroundColor: AppColors.onSecondary,
+                  ),
+                  child: const Text('Submit Without Photos'),
+                ),
+              ],
+            );
+          },
         );
-        final taskSnapshot = await uploadTask.timeout(
-          const Duration(seconds: 15),
-        );
-        final url = await taskSnapshot.ref.getDownloadURL();
-        mediaUrls.add(url);
+
+        if (proceedWithoutPhotos != true) {
+          return;
+        }
+        setState(() => _isSubmitting = true);
       }
 
       final report = await reportService.submitReport(
@@ -329,6 +417,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         city: _selectedCity,
         district: _selectedDistrict,
         mediaUrls: mediaUrls,
+        photoAnalysis: photoAnalysis,
       );
 
       // Store reference in user's myReports sub-collection
@@ -343,6 +432,10 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         _submittedReportId = report.reportId;
         _currentStep = _totalSteps; // Show success
       });
+    } on TimeoutException catch (_) {
+      _showError(
+        'Upload timed out. Please check your network connection and try again.',
+      );
     } catch (e) {
       _showError('Failed to submit report: $e');
     } finally {
@@ -861,7 +954,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
 
         // District dropdown
         DropdownButtonFormField<String>(
-          value: _selectedDistrict,
+          initialValue: _selectedDistrict,
           dropdownColor: AppColors.surfaceContainerHigh,
           decoration: const InputDecoration(
             labelText: 'District *',
@@ -885,7 +978,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         // City dropdown (filtered by district)
         if (_selectedDistrict != null)
           DropdownButtonFormField<String>(
-            value: _selectedCity,
+            initialValue: _selectedCity,
             dropdownColor: AppColors.surfaceContainerHigh,
             decoration: const InputDecoration(
               labelText: 'City / Area',
@@ -894,11 +987,17 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                 color: AppColors.onSurfaceVariant,
               ),
             ),
-            items: (KeralaLocations.districtCities[_selectedDistrict] ?? [])
-                .map((c) {
-                  return DropdownMenuItem(value: c, child: Text(c));
-                })
-                .toList(),
+            items: () {
+              final list = List<String>.from(
+                KeralaLocations.districtCities[_selectedDistrict] ?? [],
+              );
+              if (_selectedCity != null && !list.contains(_selectedCity)) {
+                list.insert(0, _selectedCity!);
+              }
+              return list.map((c) {
+                return DropdownMenuItem(value: c, child: Text(c));
+              }).toList();
+            }(),
             onChanged: (val) => setState(() => _selectedCity = val),
           ),
         const SizedBox(height: 16),
@@ -918,12 +1017,20 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
 
         // GPS button
         OutlinedButton.icon(
-          onPressed: () {
-            // TODO: Implement GPS location fetch
-            _showError('GPS location feature coming soon.');
-          },
-          icon: const Icon(Icons.my_location, color: AppColors.tertiary),
-          label: const Text('Use Current Location'),
+          onPressed: _isSubmitting ? null : _getCurrentLocation,
+          icon: _isSubmitting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation(AppColors.tertiary),
+                  ),
+                )
+              : const Icon(Icons.my_location, color: AppColors.tertiary),
+          label: Text(
+            _isSubmitting ? 'Fetching Location...' : 'Use Current Location',
+          ),
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.all(16),
             side: const BorderSide(color: AppColors.tertiary),

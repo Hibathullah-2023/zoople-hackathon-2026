@@ -39,8 +39,9 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
     });
 
     try {
-      final report =
-          await context.read<ReportService>().getReportByTrackingId(id);
+      final report = await context.read<ReportService>().getReportByTrackingId(
+        id,
+      );
       setState(() {
         _searchResult = report;
         if (report == null) _searchError = 'No report found with this ID.';
@@ -89,13 +90,19 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                   child: TextFormField(
                     controller: _searchController,
                     style: const TextStyle(
-                        color: AppColors.onSurface, fontSize: 14),
+                      color: AppColors.onSurface,
+                      fontSize: 14,
+                    ),
                     decoration: const InputDecoration(
                       hintText: 'Enter Tracking ID (e.g., NZ-260708-12345)',
-                      prefixIcon:
-                          Icon(Icons.search, color: AppColors.onSurfaceVariant),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: AppColors.onSurfaceVariant,
+                      ),
                       contentPadding: EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     onFieldSubmitted: (_) => _searchByTrackingId(),
                   ),
@@ -112,7 +119,9 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Icon(Icons.search, size: 20),
                 ),
@@ -126,8 +135,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _ReportListItem(
                 report: _searchResult!,
-                onTap: () =>
-                    context.go('/track/${_searchResult!.reportId}'),
+                onTap: () => context.go('/track/${_searchResult!.reportId}'),
               ),
             ),
           if (_searchError != null)
@@ -135,10 +143,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 _searchError!,
-                style: const TextStyle(
-                  color: AppColors.error,
-                  fontSize: 13,
-                ),
+                style: const TextStyle(color: AppColors.error, fontSize: 13),
               ),
             ),
 
@@ -163,15 +168,12 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
 
           Expanded(
             child: uid == null
-                ? const Center(
-                    child: Text('Please login to see your reports.'))
+                ? const Center(child: Text('Please login to see your reports.'))
                 : FutureBuilder<List<ReportModel>>(
                     future: reportService.getUserReports(uid),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(
-                            child: CircularProgressIndicator());
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
                       }
 
                       final reports = snapshot.data ?? [];
@@ -180,16 +182,20 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.receipt_long,
-                                  size: 64,
-                                  color: AppColors.onSurfaceVariant
-                                      .withValues(alpha: 0.3)),
+                              Icon(
+                                Icons.receipt_long,
+                                size: 64,
+                                color: AppColors.onSurfaceVariant.withValues(
+                                  alpha: 0.3,
+                                ),
+                              ),
                               const SizedBox(height: 12),
                               Text(
                                 'No reports yet',
                                 style: TextStyle(
-                                  color: AppColors.onSurfaceVariant
-                                      .withValues(alpha: 0.6),
+                                  color: AppColors.onSurfaceVariant.withValues(
+                                    alpha: 0.6,
+                                  ),
                                 ),
                               ),
                             ],
@@ -200,8 +206,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                       return ListView.separated(
                         padding: const EdgeInsets.all(16),
                         itemCount: reports.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 8),
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           final report = reports[index];
                           return _ReportListItem(
@@ -228,14 +233,22 @@ class _ReportListItem extends StatelessWidget {
 
   Color _statusColor(String status) {
     switch (status) {
-      case 'submitted': return AppColors.statusSubmitted;
-      case 'under_review': return AppColors.statusUnderReview;
-      case 'assigned': return AppColors.statusAssigned;
-      case 'in_progress': return AppColors.statusInProgress;
-      case 'resolved': return AppColors.statusResolved;
-      case 'closed': return AppColors.statusClosed;
-      case 'fake': return AppColors.statusFake;
-      default: return AppColors.outline;
+      case 'submitted':
+        return AppColors.statusSubmitted;
+      case 'under_review':
+        return AppColors.statusUnderReview;
+      case 'assigned':
+        return AppColors.statusAssigned;
+      case 'in_progress':
+        return AppColors.statusInProgress;
+      case 'resolved':
+        return AppColors.statusResolved;
+      case 'closed':
+        return AppColors.statusClosed;
+      case 'fake':
+        return AppColors.statusFake;
+      default:
+        return AppColors.outline;
     }
   }
 
@@ -290,19 +303,18 @@ class _ReportListItem extends StatelessWidget {
                       '${report.createdAt.day}/${report.createdAt.month}/${report.createdAt.year}',
                       style: TextStyle(
                         fontSize: 11,
-                        color:
-                            AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _statusColor(report.status)
-                      .withValues(alpha: 0.15),
+                  color: _statusColor(report.status).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -316,8 +328,11 @@ class _ReportListItem extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 4),
-              const Icon(Icons.chevron_right,
-                  color: AppColors.onSurfaceVariant, size: 20),
+              const Icon(
+                Icons.chevron_right,
+                color: AppColors.onSurfaceVariant,
+                size: 20,
+              ),
             ],
           ),
         ),

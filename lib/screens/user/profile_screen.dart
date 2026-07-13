@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
+import '../../services/accessibility_service.dart';
 
 /// Profile screen with anonymity toggle, password change, and settings.
 /// Shared across all roles.
@@ -133,11 +134,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       : 'Your identity may be visible to admin & authorities',
                   trailing: Switch(
                     value: user.isAnonymous,
-                    activeColor: AppColors.secondary,
+                    activeThumbColor: AppColors.secondary,
                     onChanged: (val) async {
                       await authService.toggleAnonymity(val);
                     },
                   ),
+                ),
+                const SizedBox(height: 12),
+
+                // ─── Text Size Control Card ───
+                Consumer<AccessibilityService>(
+                  builder: (context, accessibility, child) {
+                    return _SettingCard(
+                      icon: Icons.text_fields,
+                      iconColor: AppColors.tertiary,
+                      title: 'Text Size Adjustment',
+                      subtitle:
+                          'Current text size scale: ${(accessibility.textScale * 100).round()}%',
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              Icons.remove,
+                              color: AppColors.secondary,
+                            ),
+                            onPressed: accessibility.textScale > 0.8
+                                ? () => accessibility.decreaseTextSize()
+                                : null,
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.add,
+                              color: AppColors.secondary,
+                            ),
+                            onPressed: accessibility.textScale < 1.4
+                                ? () => accessibility.increaseTextSize()
+                                : null,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
 
@@ -346,7 +384,7 @@ class _SettingCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (trailing != null) trailing!,
+              ?trailing,
               if (trailing == null && onTap != null)
                 const Icon(
                   Icons.chevron_right,
