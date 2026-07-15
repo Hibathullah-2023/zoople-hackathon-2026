@@ -97,181 +97,181 @@ class ReportTrackingScreen extends StatelessWidget {
                 return const Center(child: CircularProgressIndicator());
               }
 
-          final report = reportSnap.data;
-          if (report == null) {
-            return const Center(
-              child: Text(
-                'Report not found.',
-                style: TextStyle(color: AppColors.onSurfaceVariant),
-              ),
-            );
-          }
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ─── Tracking ID Card ───
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.divider),
+              final report = reportSnap.data;
+              if (report == null) {
+                return const Center(
+                  child: Text(
+                    'Report not found.',
+                    style: TextStyle(color: AppColors.onSurfaceVariant),
                   ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        'TRACKING ID',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.onSurfaceVariant,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        report.reportId,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.tertiary,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
+                );
+              }
 
-                // ─── Current Status Badge ───
-                Row(
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Current Status: ',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.onSurfaceVariant,
+                    // ─── Tracking ID Card ───
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.divider),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'TRACKING ID',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.onSurfaceVariant,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            report.reportId,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.tertiary,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    _StatusBadge(status: report.status),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Text(
-                      'Priority: ',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.onSurfaceVariant,
+                    const SizedBox(height: 20),
+
+                    // ─── Current Status Badge ───
+                    Row(
+                      children: [
+                        const Text(
+                          'Current Status: ',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                        _StatusBadge(status: report.status),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Text(
+                          'Priority: ',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                        _PriorityBadge(priority: report.priority),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // ─── Report Summary ───
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'REPORT SUMMARY',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.secondary,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _InfoRow(
+                            label: 'Category',
+                            value:
+                                AppConstants.categoryLabels[report.category] ??
+                                report.category,
+                          ),
+                          _InfoRow(
+                            label: 'Location',
+                            value: [
+                              report.city,
+                              report.district,
+                            ].whereType<String>().join(', '),
+                          ),
+                          _InfoRow(
+                            label: 'Photos',
+                            value: '${report.mediaCount} attached',
+                          ),
+                          _InfoRow(
+                            label: 'Submitted',
+                            value: _formatDate(report.createdAt),
+                          ),
+                          if (report.resolvedAt != null)
+                            _InfoRow(
+                              label: 'Resolved',
+                              value: _formatDate(report.resolvedAt!),
+                            ),
+                        ],
                       ),
                     ),
-                    _PriorityBadge(priority: report.priority),
-                  ],
-                ),
-                const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                // ─── Report Summary ───
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'REPORT SUMMARY',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.secondary,
-                          letterSpacing: 0.5,
-                        ),
+                    // ─── Status Timeline ───
+                    const Text(
+                      'Status Timeline',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurface,
                       ),
-                      const SizedBox(height: 8),
-                      _InfoRow(
-                        label: 'Category',
-                        value:
-                            AppConstants.categoryLabels[report.category] ??
-                            report.category,
-                      ),
-                      _InfoRow(
-                        label: 'Location',
-                        value: [
-                          report.city,
-                          report.district,
-                        ].whereType<String>().join(', '),
-                      ),
-                      _InfoRow(
-                        label: 'Photos',
-                        value: '${report.mediaCount} attached',
-                      ),
-                      _InfoRow(
-                        label: 'Submitted',
-                        value: _formatDate(report.createdAt),
-                      ),
-                      if (report.resolvedAt != null)
-                        _InfoRow(
-                          label: 'Resolved',
-                          value: _formatDate(report.resolvedAt!),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
+                    ),
+                    const SizedBox(height: 16),
+                    StreamBuilder<List<StatusLogModel>>(
+                      stream: reportService.statusLogStream(reportId),
+                      builder: (context, logSnap) {
+                        final logs = logSnap.data ?? [];
 
-                // ─── Status Timeline ───
-                const Text(
-                  'Status Timeline',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                StreamBuilder<List<StatusLogModel>>(
-                  stream: reportService.statusLogStream(reportId),
-                  builder: (context, logSnap) {
-                    final logs = logSnap.data ?? [];
+                        if (logs.isEmpty) {
+                          return const Text(
+                            'No status updates yet.',
+                            style: TextStyle(color: AppColors.onSurfaceVariant),
+                          );
+                        }
 
-                    if (logs.isEmpty) {
-                      return const Text(
-                        'No status updates yet.',
-                        style: TextStyle(color: AppColors.onSurfaceVariant),
-                      );
-                    }
+                        return Column(
+                          children: logs.asMap().entries.map((entry) {
+                            final log = entry.value;
+                            final isLast = entry.key == logs.length - 1;
 
-                    return Column(
-                      children: logs.asMap().entries.map((entry) {
-                        final log = entry.value;
-                        final isLast = entry.key == logs.length - 1;
-
-                        return _TimelineEntry(
-                          status: log.newStatus,
-                          note: log.note,
-                          timestamp: log.changedAt,
-                          isLast: isLast,
-                          isActive: isLast,
+                            return _TimelineEntry(
+                              status: log.newStatus,
+                              note: log.note,
+                              timestamp: log.changedAt,
+                              isLast: isLast,
+                              isActive: isLast,
+                            );
+                          }).toList(),
                         );
-                      }).toList(),
-                    );
-                  },
+                      },
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           );
         },
-      );
-    },
-  ),
+      ),
     );
   }
 

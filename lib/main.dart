@@ -62,8 +62,8 @@ class NizhalApp extends StatelessWidget {
               final accessibility = context.watch<AccessibilityService>();
               return Container(
                 color: const Color(
-                  0xFF070B13,
-                ), // Deep outer background for contrast on desktop/web
+                  0xFFE2E8F0,
+                ), // Soft light gray outer background for contrast on desktop/web
                 child: MediaQuery(
                   data: MediaQuery.of(context).copyWith(
                     textScaler: TextScaler.linear(accessibility.textScale),

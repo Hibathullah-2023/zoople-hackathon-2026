@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 /// Nizhal Design System — Theme Configuration
@@ -9,12 +8,12 @@ class AppTheme {
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
-      fontFamily: GoogleFonts.inter().fontFamily,
+      brightness: Brightness.light,
+      fontFamily: 'sans-serif',
       fontFamilyFallback: const ['sans-serif', 'Arial'],
 
       // ─── Color Scheme ───
-      colorScheme: const ColorScheme.dark(
+      colorScheme: const ColorScheme.light(
         primary: AppColors.primary,
         onPrimary: AppColors.onPrimary,
         primaryContainer: AppColors.primaryContainer,
@@ -43,29 +42,30 @@ class AppTheme {
       ),
 
       // ─── Scaffold ───
-      scaffoldBackgroundColor: AppColors.surface,
+      scaffoldBackgroundColor: AppColors.background,
 
       // ─── AppBar ───
-      appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.surface,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.inter(
+        titleTextStyle: TextStyle(
+          fontFamily: 'sans-serif',
           fontSize: 20,
           fontWeight: FontWeight.w700,
-          color: AppColors.secondary,
+          color: AppColors.primary,
           height: 1.4,
         ),
-        iconTheme: const IconThemeData(color: AppColors.primaryFixedDim),
+        iconTheme: IconThemeData(color: AppColors.primary),
       ),
 
       // ─── Bottom Navigation ───
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: AppColors.surfaceContainerLowest,
-        selectedItemColor: AppColors.secondary,
-        unselectedItemColor: AppColors.onSurfaceVariant,
+        backgroundColor: AppColors.surface,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.outline,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
         showUnselectedLabels: true,
@@ -73,21 +73,22 @@ class AppTheme {
 
       // ─── Card ───
       cardTheme: CardThemeData(
-        color: AppColors.surfaceContainerHigh,
+        color: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: AppColors.cardBorderTop, width: 1),
+          side: const BorderSide(color: AppColors.outlineVariant, width: 1),
         ),
       ),
 
       // ─── Input Decoration ───
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surfaceContainer,
-        hintStyle: GoogleFonts.inter(
-          color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
+        fillColor: AppColors.surfaceDim,
+        hintStyle: const TextStyle(
+          fontFamily: 'sans-serif',
+          color: AppColors.outline,
           fontSize: 16,
         ),
         contentPadding: const EdgeInsets.all(16),
@@ -101,7 +102,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.tertiary, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -116,14 +117,15 @@ class AppTheme {
       // ─── Elevated Button ───
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.secondary,
-          foregroundColor: AppColors.onSecondary,
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.onPrimary,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.inter(
+          textStyle: const TextStyle(
+            fontFamily: 'sans-serif',
             fontSize: 14,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.8,
@@ -134,13 +136,14 @@ class AppTheme {
       // ─── Outlined Button ───
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.onSurfaceVariant,
+          foregroundColor: AppColors.onSurface,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
           side: const BorderSide(color: AppColors.outlineVariant),
-          textStyle: GoogleFonts.inter(
+          textStyle: const TextStyle(
+            fontFamily: 'sans-serif',
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -150,8 +153,9 @@ class AppTheme {
       // ─── Text Button ───
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.secondary,
-          textStyle: GoogleFonts.inter(
+          foregroundColor: AppColors.primary,
+          textStyle: const TextStyle(
+            fontFamily: 'sans-serif',
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -160,23 +164,24 @@ class AppTheme {
 
       // ─── Floating Action Button ───
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppColors.secondary,
-        foregroundColor: AppColors.onSecondary,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
         elevation: 4,
       ),
 
       // ─── Divider ───
       dividerTheme: const DividerThemeData(
-        color: AppColors.divider,
+        color: AppColors.outlineVariant,
         thickness: 1,
         space: 0,
       ),
 
       // ─── Snackbar ───
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: AppColors.surfaceContainerHighest,
-        contentTextStyle: GoogleFonts.inter(
-          color: AppColors.onSurface,
+        backgroundColor: AppColors.primary,
+        contentTextStyle: const TextStyle(
+          fontFamily: 'sans-serif',
+          color: Colors.white,
           fontSize: 14,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -185,15 +190,17 @@ class AppTheme {
 
       // ─── Dialog ───
       dialogTheme: DialogThemeData(
-        backgroundColor: AppColors.surfaceContainerHigh,
+        backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        titleTextStyle: GoogleFonts.inter(
+        titleTextStyle: const TextStyle(
+          fontFamily: 'sans-serif',
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: AppColors.onSurface,
         ),
-        contentTextStyle: GoogleFonts.inter(
+        contentTextStyle: const TextStyle(
+          fontFamily: 'sans-serif',
           fontSize: 14,
           color: AppColors.onSurfaceVariant,
         ),
@@ -201,98 +208,110 @@ class AppTheme {
 
       // ─── Chip ───
       chipTheme: ChipThemeData(
-        backgroundColor: AppColors.surfaceContainer,
-        selectedColor: AppColors.secondary.withValues(alpha: 0.2),
-        labelStyle: GoogleFonts.inter(
+        backgroundColor: AppColors.surfaceDim,
+        selectedColor: AppColors.primary.withValues(alpha: 0.2),
+        labelStyle: const TextStyle(
+          fontFamily: 'sans-serif',
           fontSize: 12,
           fontWeight: FontWeight.w500,
+          color: AppColors.onSurface,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         side: const BorderSide(color: AppColors.outlineVariant, width: 0.5),
       ),
 
       // ─── Text Theme ───
-      textTheme: GoogleFonts.interTextTheme(
-        TextTheme(
-          // Headlines
-          headlineLarge: GoogleFonts.inter(
-            fontSize: 32,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.32,
-            height: 1.25,
-            color: AppColors.onSurface,
-          ),
-          headlineMedium: GoogleFonts.inter(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.24,
-            height: 1.33,
-            color: AppColors.onSurface,
-          ),
-          headlineSmall: GoogleFonts.inter(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            height: 1.4,
-            color: AppColors.onSurface,
-          ),
-          // Title
-          titleLarge: GoogleFonts.inter(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            height: 1.56,
-            color: AppColors.onSurface,
-          ),
-          titleMedium: GoogleFonts.inter(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            height: 1.5,
-            color: AppColors.onSurface,
-          ),
-          titleSmall: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            height: 1.43,
-            color: AppColors.onSurface,
-          ),
-          // Body
-          bodyLarge: GoogleFonts.inter(
-            fontSize: 18,
-            fontWeight: FontWeight.w400,
-            height: 1.56,
-            color: AppColors.onSurface,
-          ),
-          bodyMedium: GoogleFonts.inter(
-            fontSize: 16,
-            fontWeight: FontWeight.w400,
-            height: 1.5,
-            color: AppColors.onSurface,
-          ),
-          bodySmall: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            height: 1.43,
-            color: AppColors.onSurfaceVariant,
-          ),
-          // Labels
-          labelLarge: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            height: 1.43,
-            color: AppColors.onSurface,
-          ),
-          labelMedium: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.6,
-            height: 1.33,
-            color: AppColors.onSurface,
-          ),
-          labelSmall: GoogleFonts.inter(
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            height: 1.27,
-            color: AppColors.onSurfaceVariant,
-          ),
+      textTheme: const TextTheme(
+        // Headlines
+        headlineLarge: TextStyle(
+          fontFamily: 'sans-serif',
+          fontSize: 32,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.32,
+          height: 1.25,
+          color: AppColors.onSurface,
+        ),
+        headlineMedium: TextStyle(
+          fontFamily: 'sans-serif',
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.24,
+          height: 1.33,
+          color: AppColors.onSurface,
+        ),
+        headlineSmall: TextStyle(
+          fontFamily: 'sans-serif',
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          height: 1.4,
+          color: AppColors.onSurface,
+        ),
+        // Title
+        titleLarge: TextStyle(
+          fontFamily: 'sans-serif',
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          height: 1.56,
+          color: AppColors.onSurface,
+        ),
+        titleMedium: TextStyle(
+          fontFamily: 'sans-serif',
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          height: 1.5,
+          color: AppColors.onSurface,
+        ),
+        titleSmall: TextStyle(
+          fontFamily: 'sans-serif',
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          height: 1.43,
+          color: AppColors.onSurface,
+        ),
+        // Body
+        bodyLarge: TextStyle(
+          fontFamily: 'sans-serif',
+          fontSize: 18,
+          fontWeight: FontWeight.w400,
+          height: 1.56,
+          color: AppColors.onSurface,
+        ),
+        bodyMedium: TextStyle(
+          fontFamily: 'sans-serif',
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+          height: 1.5,
+          color: AppColors.onSurface,
+        ),
+        bodySmall: TextStyle(
+          fontFamily: 'sans-serif',
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          height: 1.43,
+          color: AppColors.onSurfaceVariant,
+        ),
+        // Labels
+        labelLarge: TextStyle(
+          fontFamily: 'sans-serif',
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          height: 1.43,
+          color: AppColors.onSurface,
+        ),
+        labelMedium: TextStyle(
+          fontFamily: 'sans-serif',
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.6,
+          height: 1.33,
+          color: AppColors.onSurface,
+        ),
+        labelSmall: TextStyle(
+          fontFamily: 'sans-serif',
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          height: 1.27,
+          color: AppColors.onSurfaceVariant,
         ),
       ),
     );

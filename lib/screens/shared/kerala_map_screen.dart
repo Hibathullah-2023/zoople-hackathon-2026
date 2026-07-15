@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -26,6 +27,8 @@ class _KeralaMapScreenState extends State<KeralaMapScreen> {
   bool _isLoading = true;
   String? _userRole;
   final Set<String> _myReportIds = {};
+  StreamSubscription<List<ReportModel>>? _reportsSubscription;
+  int _lastMonthCount = 0;
 
   // Center on Kerala
   static const LatLng _keralaCenter = LatLng(
@@ -37,6 +40,12 @@ class _KeralaMapScreenState extends State<KeralaMapScreen> {
   void initState() {
     super.initState();
     _loadIncidentDensity();
+  }
+
+  @override
+  void dispose() {
+    _reportsSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadIncidentDensity() async {
@@ -59,67 +68,75 @@ class _KeralaMapScreenState extends State<KeralaMapScreen> {
         }
       }
 
-      // Fetch all reports to aggregate location density
-      final reports = await reportService.allReportsStream().first;
+      await _reportsSubscription?.cancel();
+      _reportsSubscription = reportService.allReportsStream().listen((
+        reportsList,
+      ) {
+        final oneMonthAgo = DateTime.now().subtract(const Duration(days: 30));
+        final reports = reportsList
+            .where((r) => r.createdAt.isAfter(oneMonthAgo))
+            .toList();
 
-      final List<CircleMarker> circles = [];
-      final List<Marker> markers = [];
+        final List<CircleMarker> circles = [];
+        final List<Marker> markers = [];
 
-      for (final report in reports) {
-        if (report.location != null) {
-          final latLng = LatLng(
-            report.location!.latitude,
-            report.location!.longitude,
-          );
-          final heatColor = _priorityColor(report.priority);
+        for (final report in reports) {
+          if (report.location != null) {
+            final latLng = LatLng(
+              report.location!.latitude,
+              report.location!.longitude,
+            );
+            final heatColor = _priorityColor(report.priority);
 
-          // Heat Map Overlay: Transparent circle outer glow and core
-          circles.add(
-            CircleMarker(
-              point: latLng,
-              radius: 18,
-              useRadiusInMeter: false,
-              color: heatColor.withValues(alpha: 0.18),
-              borderStrokeWidth: 0,
-            ),
-          );
-
-          circles.add(
-            CircleMarker(
-              point: latLng,
-              radius: 6,
-              useRadiusInMeter: false,
-              color: heatColor.withValues(alpha: 0.7),
-              borderStrokeWidth: 1.5,
-              borderColor: Colors.white,
-            ),
-          );
-
-          // Interactive tap overlay marker
-          markers.add(
-            Marker(
-              point: latLng,
-              width: 40,
-              height: 40,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => _showIncidentMapDetails(report),
-                child: Container(color: Colors.transparent),
+            // Heat Map Overlay: Transparent circle outer glow and core
+            circles.add(
+              CircleMarker(
+                point: latLng,
+                radius: 18,
+                useRadiusInMeter: false,
+                color: heatColor.withValues(alpha: 0.18),
+                borderStrokeWidth: 0,
               ),
-            ),
-          );
-        }
-      }
+            );
 
-      if (mounted) {
-        setState(() {
-          _densityCircles.clear();
-          _densityCircles.addAll(circles);
-          _mapMarkers.clear();
-          _mapMarkers.addAll(markers);
-          _isLoading = false;
-        });
-      }
+            circles.add(
+              CircleMarker(
+                point: latLng,
+                radius: 6,
+                useRadiusInMeter: false,
+                color: heatColor.withValues(alpha: 0.7),
+                borderStrokeWidth: 1.5,
+                borderColor: Colors.white,
+              ),
+            );
+
+            // Interactive tap overlay marker
+            markers.add(
+              Marker(
+                point: latLng,
+                width: 40,
+                height: 40,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _showIncidentMapDetails(report),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            );
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _densityCircles.clear();
+            _densityCircles.addAll(circles);
+            _mapMarkers.clear();
+            _mapMarkers.addAll(markers);
+            _lastMonthCount = reports.length;
+            _isLoading = false;
+          });
+        }
+      });
     } catch (e) {
       debugPrint('Failed to load home map density: $e');
       if (mounted) {
@@ -291,7 +308,27 @@ class _KeralaMapScreenState extends State<KeralaMapScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                _detailRow(
+                  'Category',
+                  AppConstants.categoryLabels[report.category] ??
+                      report.category.toUpperCase(),
+                ),
+                _detailRow('District', report.district ?? 'Unknown'),
+                _detailRow(
+                  'Date Reported',
+                  '${report.createdAt.day}/${report.createdAt.month}/${report.createdAt.year}',
+                ),
                 _detailRow('Priority', report.priority.toUpperCase()),
+                _detailRow(
+                  'Status',
+                  (report.status == 'resolved' || report.status == 'closed')
+                      ? '✅ Solved'
+                      : (report.status == 'under_review' ||
+                            report.status == 'assigned' ||
+                            report.status == 'in_progress')
+                      ? '⏳ Under Investigation / Pending'
+                      : '❌ Unsolved',
+                ),
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -370,6 +407,50 @@ class _KeralaMapScreenState extends State<KeralaMapScreen> {
             ],
           ),
           if (_isLoading) const Center(child: CircularProgressIndicator()),
+
+          // Title note
+          Positioned(
+            top: 16,
+            left: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.surface.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.outlineVariant),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Cases Reported in the Last One Month',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Total: $_lastMonthCount',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.secondary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
           // Map legend panel
           Positioned(

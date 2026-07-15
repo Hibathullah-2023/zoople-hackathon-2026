@@ -160,31 +160,13 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                           ),
                         ),
-                        // Shield icon
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [AppColors.secondary, Color(0xFF0F766E)],
-                            ),
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.secondary.withValues(
-                                  alpha: 0.3,
-                                ),
-                                blurRadius: 30,
-                                spreadRadius: 5,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.shield,
-                            size: 56,
-                            color: AppColors.surface,
+                        // Logo image
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: Image.asset(
+                            'assets/images/logo.jpeg',
+                            width: 180,
+                            fit: BoxFit.contain,
                           ),
                         ),
                       ],

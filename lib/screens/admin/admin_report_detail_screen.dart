@@ -239,10 +239,12 @@ class AdminReportDetailScreen extends StatelessWidget {
                               color: AppColors.surfaceContainerLow,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: (report.photoAnalysis!['status'] == 'Authentic'
-                                        ? AppColors.tertiary
-                                        : AppColors.error)
-                                    .withValues(alpha: 0.3),
+                                color:
+                                    (report.photoAnalysis!['status'] ==
+                                                'Authentic'
+                                            ? AppColors.tertiary
+                                            : AppColors.error)
+                                        .withValues(alpha: 0.3),
                               ),
                             ),
                             child: Column(
@@ -251,12 +253,16 @@ class AdminReportDetailScreen extends StatelessWidget {
                                 Row(
                                   children: [
                                     Icon(
-                                      report.photoAnalysis!['status'] == 'Authentic'
+                                      report.photoAnalysis!['status'] ==
+                                              'Authentic'
                                           ? Icons.verified_user
-                                          : report.photoAnalysis!['status'] == 'AI Generated'
-                                              ? Icons.psychology
-                                              : Icons.warning_amber_rounded,
-                                      color: report.photoAnalysis!['status'] == 'Authentic'
+                                          : report.photoAnalysis!['status'] ==
+                                                'AI Generated'
+                                          ? Icons.psychology
+                                          : Icons.warning_amber_rounded,
+                                      color:
+                                          report.photoAnalysis!['status'] ==
+                                              'Authentic'
                                           ? AppColors.tertiary
                                           : AppColors.error,
                                       size: 20,
@@ -267,7 +273,9 @@ class AdminReportDetailScreen extends StatelessWidget {
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
-                                        color: report.photoAnalysis!['status'] == 'Authentic'
+                                        color:
+                                            report.photoAnalysis!['status'] ==
+                                                'Authentic'
                                             ? AppColors.tertiary
                                             : AppColors.error,
                                       ),
@@ -279,10 +287,12 @@ class AdminReportDetailScreen extends StatelessWidget {
                                         vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: (report.photoAnalysis!['status'] == 'Authentic'
-                                                ? AppColors.tertiary
-                                                : AppColors.error)
-                                            .withValues(alpha: 0.1),
+                                        color:
+                                            (report.photoAnalysis!['status'] ==
+                                                        'Authentic'
+                                                    ? AppColors.tertiary
+                                                    : AppColors.error)
+                                                .withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Text(
@@ -290,7 +300,9 @@ class AdminReportDetailScreen extends StatelessWidget {
                                         style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.bold,
-                                          color: report.photoAnalysis!['status'] == 'Authentic'
+                                          color:
+                                              report.photoAnalysis!['status'] ==
+                                                  'Authentic'
                                               ? AppColors.tertiary
                                               : AppColors.error,
                                         ),
@@ -310,27 +322,39 @@ class AdminReportDetailScreen extends StatelessWidget {
                                 const SizedBox(height: 8),
                                 const Divider(color: AppColors.divider),
                                 const SizedBox(height: 4),
-                                ...((report.photoAnalysis!['findings'] as List<dynamic>?) ?? [])
+                                ...((report.photoAnalysis!['findings']
+                                            as List<dynamic>?) ??
+                                        [])
                                     .map((finding) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 4),
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text('• ', style: TextStyle(color: AppColors.onSurfaceVariant)),
-                                        Expanded(
-                                          child: Text(
-                                            finding.toString(),
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              color: AppColors.onSurfaceVariant,
-                                            ),
-                                          ),
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 4,
                                         ),
-                                      ],
-                                    ),
-                                  );
-                                }),
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              '• ',
+                                              style: TextStyle(
+                                                color:
+                                                    AppColors.onSurfaceVariant,
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: Text(
+                                                finding.toString(),
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  color: AppColors
+                                                      .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
                               ],
                             ),
                           ),

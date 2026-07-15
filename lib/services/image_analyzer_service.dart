@@ -15,7 +15,7 @@ class ImageAnalyzerService {
     List<String> findings = [
       'EXIF headers match mobile camera capture profile.',
       'Quantization matrices match direct CMOS sensor defaults.',
-      'No clone-stamp or localized pixel fabrication detected.'
+      'No clone-stamp or localized pixel fabrication detected.',
     ];
 
     if (name.contains('photoshop') ||
@@ -30,7 +30,7 @@ class ImageAnalyzerService {
         'quantization tables show compression mismatch (re-saved via editing software).',
         'EXIF Software tags indicating Lightroom/Photoshop edits found.',
         'Quantization table quantization mismatch (QT-QM) indicates double compression.',
-        'High-frequency gradient disruption suggests local retouching.'
+        'High-frequency gradient disruption suggests local retouching.',
       ];
     } else if (name.contains('dall-e') ||
         name.contains('dalle') ||
@@ -44,7 +44,7 @@ class ImageAnalyzerService {
         'Absence of camera hardware sensor fingerprint (EXIF tags empty).',
         'Anomalous color-channel noise covariance typical of diffusion models.',
         'High-frequency grid artifacts detected in GAN upsampling layers.',
-        'Inconsistent directional illumination vector patterns.'
+        'Inconsistent directional illumination vector patterns.',
       ];
     }
 

@@ -408,15 +408,6 @@ class AuthService {
   }
 
   Future<void> seedDefaultUsers() async {
-    final snapshot = await _firestore
-        .collection(AppConstants.authoritiesCollection)
-        .limit(1)
-        .get();
-    if (snapshot.docs.isNotEmpty) {
-      debugPrint('Authorities already exist, skipping seeding.');
-      return;
-    }
-
     final List<Map<String, dynamic>> defaultUsers = [
       {
         'email': 'authority_ekm@nizhal.kerala.gov.in',
@@ -463,6 +454,17 @@ class AuthService {
         'jurisdiction': 'Kozhikode',
         'specialization': 'narcotics',
       },
+      {
+        'email': 'reporter_anonymous@nizhal.kerala.gov.in',
+        'password': 'UserNizhal2026!',
+        'name': 'Citizen Advocate',
+        'role': 'user',
+        'badgeId': '',
+        'jurisdiction': '',
+        'specialization': '',
+        'anonymousId': 'NX-8821',
+        'aadhaarHash': '73cfb8417852a39281e28bbd916892543ffb9087cf283a21',
+      },
     ];
 
     for (final u in defaultUsers) {
@@ -474,6 +476,18 @@ class AuthService {
         final badgeId = u['badgeId'] as String;
         final jurisdiction = u['jurisdiction'] as String;
         final specialization = u['specialization'] as String;
+
+        // Check if user already exists in Firestore users collection
+        final userSnap = await _firestore
+            .collection(AppConstants.usersCollection)
+            .where('email', isEqualTo: email)
+            .limit(1)
+            .get();
+
+        if (userSnap.docs.isNotEmpty) {
+          debugPrint('User $email already exists, skipping.');
+          continue;
+        }
 
         UserCredential? credential;
         try {
@@ -516,34 +530,45 @@ class AuthService {
         if (credential != null && credential.user != null) {
           final uid = credential.user!.uid;
 
+          final Map<String, dynamic> userProfile = {
+            'uid': uid,
+            'email': email,
+            'role': role,
+            'displayName': name,
+            'status': AppConstants.userActive,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          };
+
+          if (u.containsKey('anonymousId')) {
+            userProfile['anonymousId'] = u['anonymousId'];
+          }
+          if (u.containsKey('aadhaarHash')) {
+            userProfile['aadhaarHash'] = u['aadhaarHash'];
+          }
+
           await _firestore
               .collection(AppConstants.usersCollection)
               .doc(uid)
-              .set({
-                'uid': uid,
-                'email': email,
-                'role': role,
-                'displayName': name,
-                'status': AppConstants.userActive,
-                'createdAt': FieldValue.serverTimestamp(),
-                'updatedAt': FieldValue.serverTimestamp(),
-              }, SetOptions(merge: true));
+              .set(userProfile, SetOptions(merge: true));
 
-          await _firestore
-              .collection(AppConstants.authoritiesCollection)
-              .doc(uid)
-              .set({
-                'email': email,
-                'name': name,
-                'badgeId': badgeId,
-                'jurisdiction': jurisdiction,
-                'specialization': specialization,
-                'isActive': true,
-                'assignedCaseCount': 0,
-                'createdAt': FieldValue.serverTimestamp(),
-              }, SetOptions(merge: true));
+          if (role == 'authority') {
+            await _firestore
+                .collection(AppConstants.authoritiesCollection)
+                .doc(uid)
+                .set({
+                  'email': email,
+                  'name': name,
+                  'badgeId': badgeId,
+                  'jurisdiction': jurisdiction,
+                  'specialization': specialization,
+                  'isActive': true,
+                  'assignedCaseCount': 0,
+                  'createdAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
+          }
 
-          debugPrint('Successfully seeded user and authority: $email');
+          debugPrint('Successfully seeded user: $email');
         }
       } catch (e) {
         debugPrint('Error seeding default user ${u['email']}: $e');

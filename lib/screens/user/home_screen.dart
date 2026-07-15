@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -32,6 +33,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String _currentDistrict = 'Ernakulam'; // Default fallback
   String? _userRole;
   final Set<String> _myReportIds = {};
+  StreamSubscription<List<ReportModel>>? _reportsSubscription;
+  int _lastMonthCount = 0;
 
   // Center on Kerala
   static const LatLng _keralaCenter = LatLng(
@@ -153,6 +156,12 @@ class _HomeScreenState extends State<HomeScreen> {
     _detectCurrentDistrict().then((_) => _loadIncidentDensity());
   }
 
+  @override
+  void dispose() {
+    _reportsSubscription?.cancel();
+    super.dispose();
+  }
+
   Future<void> _loadIncidentDensity() async {
     try {
       final reportService = context.read<ReportService>();
@@ -174,66 +183,75 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      // Fetch all reports to aggregate location density
-      final reports = await reportService.allReportsStream().first;
+      await _reportsSubscription?.cancel();
+      _reportsSubscription = reportService.allReportsStream().listen((
+        reportsList,
+      ) {
+        final oneMonthAgo = DateTime.now().subtract(const Duration(days: 30));
+        final reports = reportsList
+            .where((r) => r.createdAt.isAfter(oneMonthAgo))
+            .toList();
 
-      final List<CircleMarker> circles = [];
-      final List<Marker> markers = [];
+        final List<CircleMarker> circles = [];
+        final List<Marker> markers = [];
 
-      for (final report in reports) {
-        if (report.location != null) {
-          final latLng = LatLng(report.location!.latitude, report.location!.longitude);
-          final heatColor = _priorityColor(report.priority);
+        for (final report in reports) {
+          if (report.location != null) {
+            final latLng = LatLng(
+              report.location!.latitude,
+              report.location!.longitude,
+            );
+            final heatColor = _priorityColor(report.priority);
 
-          // Heat Map Overlay: Transparent circle outer glow and core
-          circles.add(
-            CircleMarker(
-              point: latLng,
-              radius: 18,
-              useRadiusInMeter: false,
-              color: heatColor.withValues(alpha: 0.18),
-              borderStrokeWidth: 0,
-            ),
-          );
+            // Heat Map Overlay: Transparent circle outer glow and core
+            circles.add(
+              CircleMarker(
+                point: latLng,
+                radius: 18,
+                useRadiusInMeter: false,
+                color: heatColor.withValues(alpha: 0.18),
+                borderStrokeWidth: 0,
+              ),
+            );
 
-          circles.add(
-            CircleMarker(
-              point: latLng,
-              radius: 6,
-              useRadiusInMeter: false,
-              color: heatColor.withValues(alpha: 0.7),
-              borderStrokeWidth: 1.5,
-              borderColor: Colors.white,
-            ),
-          );
+            circles.add(
+              CircleMarker(
+                point: latLng,
+                radius: 6,
+                useRadiusInMeter: false,
+                color: heatColor.withValues(alpha: 0.7),
+                borderStrokeWidth: 1.5,
+                borderColor: Colors.white,
+              ),
+            );
 
-          // Interactive tap overlay marker
-          markers.add(
-            Marker(
-              point: latLng,
-              width: 40,
-              height: 40,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => _showIncidentMapDetails(report),
-                child: Container(
-                  color: Colors.transparent,
+            // Interactive tap overlay marker
+            markers.add(
+              Marker(
+                point: latLng,
+                width: 40,
+                height: 40,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _showIncidentMapDetails(report),
+                  child: Container(color: Colors.transparent),
                 ),
               ),
-            ),
-          );
+            );
+          }
         }
-      }
 
-      if (mounted) {
-        setState(() {
-          _densityCircles.clear();
-          _densityCircles.addAll(circles);
-          _mapMarkers.clear();
-          _mapMarkers.addAll(markers);
-          _isMapLoading = false;
-        });
-      }
+        if (mounted) {
+          setState(() {
+            _densityCircles.clear();
+            _densityCircles.addAll(circles);
+            _mapMarkers.clear();
+            _mapMarkers.addAll(markers);
+            _lastMonthCount = reports.length;
+            _isMapLoading = false;
+          });
+        }
+      });
     } catch (e) {
       debugPrint('Failed to load home map density: $e');
       if (mounted) {
@@ -298,10 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                color: AppColors.onSurface,
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: AppColors.onSurface, fontSize: 14),
             ),
           ),
         ],
@@ -310,7 +325,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showIncidentMapDetails(ReportModel report) {
-    final isOwnerOrAdmin = _userRole == 'admin' ||
+    final isOwnerOrAdmin =
+        _userRole == 'admin' ||
         _userRole == 'authority' ||
         _myReportIds.contains(report.reportId);
 
@@ -332,7 +348,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      AppConstants.categoryLabels[report.category] ?? report.category.toUpperCase(),
+                      AppConstants.categoryLabels[report.category] ??
+                          report.category.toUpperCase(),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -340,9 +357,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: _statusColor(report.status).withValues(alpha: 0.15),
+                        color: _statusColor(
+                          report.status,
+                        ).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -366,7 +388,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 16),
                 const Text(
                   'Description:',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.onSurface,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -398,14 +423,36 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                _detailRow(
+                  'Category',
+                  AppConstants.categoryLabels[report.category] ??
+                      report.category.toUpperCase(),
+                ),
+                _detailRow('District', report.district ?? 'Unknown'),
+                _detailRow(
+                  'Date Reported',
+                  '${report.createdAt.day}/${report.createdAt.month}/${report.createdAt.year}',
+                ),
                 _detailRow('Priority', report.priority.toUpperCase()),
+                _detailRow(
+                  'Status',
+                  (report.status == 'resolved' || report.status == 'closed')
+                      ? '✅ Solved'
+                      : (report.status == 'under_review' ||
+                            report.status == 'assigned' ||
+                            report.status == 'in_progress')
+                      ? '⏳ Under Investigation / Pending'
+                      : '❌ Unsolved',
+                ),
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: AppColors.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: const Row(
                     children: [
@@ -414,7 +461,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: Text(
                           'Detailed view restricted to reporter or authorized personnel only.',
-                          style: TextStyle(color: AppColors.error, fontSize: 12),
+                          style: TextStyle(
+                            color: AppColors.error,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ],
@@ -445,23 +495,26 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     final authService = context.read<AuthService>();
     final reportService = context.read<ReportService>();
 
-    final sortedContacts = List<Map<String, String>>.from(_emergencyContacts)
-        .where((a) => a['district'] == _currentDistrict)
-        .toList();
+    final sortedContacts = List<Map<String, String>>.from(
+      _emergencyContacts,
+    ).where((a) => a['district'] == _currentDistrict).toList();
 
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         title: Row(
           children: [
-            const Icon(Icons.shield, color: AppColors.primary, size: 24),
+            Image.asset(
+              'assets/images/logo.jpeg',
+              width: 28,
+              height: 28,
+              fit: BoxFit.contain,
+            ),
             const SizedBox(width: 8),
             ShaderMask(
               shaderCallback: (bounds) => const LinearGradient(
@@ -533,6 +586,39 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     if (_isMapLoading)
                       const Center(child: CircularProgressIndicator()),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.outlineVariant),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cases Reported in the Last One Month',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Total: $_lastMonthCount',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
                   ],
                 ),
               ),
