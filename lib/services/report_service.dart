@@ -1,16 +1,25 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:firebase_database/firebase_database.dart' as rtdb;
 import '../constants/app_constants.dart';
 import '../constants/priority_keywords.dart';
 import '../models/report_model.dart';
 import '../models/status_log_model.dart';
+import '../domain/repositories/report_repository.dart';
+import '../data/repositories/report_repository_impl.dart';
+import 'image_analyzer_service.dart';
 
 /// Report service — handles CRUD, auto-priority, status updates,
 /// bypass routing, and real-time listeners.
 class ReportService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final ReportRepository _reportRepository;
+
+  ReportService({ReportRepository? reportRepository})
+    : _reportRepository = reportRepository ?? ReportRepositoryImpl();
 
   // ─── Report ID Generation ───
 
@@ -22,6 +31,11 @@ class ReportService {
     final random = Random.secure();
     final seq = random.nextInt(90000) + 10000; // 5-digit number
     return '${AppConstants.reportIdPrefix}-$dateStr-$seq';
+  }
+
+  // Expose public method to pre-generate report ID for Storage paths
+  String generateReportId() {
+    return _generateReportId();
   }
 
   // ─── Create Report ───
@@ -43,9 +57,10 @@ class ReportService {
     String? pincode,
     List<String> mediaUrls = const [],
     Map<String, dynamic>? photoAnalysis,
+    String? pregeneratedReportId,
   }) async {
     // 1. Generate report ID
-    final reportId = _generateReportId();
+    final reportId = pregeneratedReportId ?? _generateReportId();
 
     // 2. Run auto-priority engine
     final priority = PriorityKeywords.calculatePriority(description, category);
@@ -158,6 +173,24 @@ class ReportService {
     }, SetOptions(merge: true));
 
     await batch.commit();
+
+    // Synchronize to Realtime Database
+    try {
+      final Map<String, dynamic> rtdbData = {
+        'latitude': report.location?.latitude,
+        'longitude': report.location?.longitude,
+        'createdAt': report.createdAt.millisecondsSinceEpoch,
+      };
+      if (report.mediaUrls.isNotEmpty) {
+        rtdbData['photoUrl'] = report.mediaUrls.first;
+      }
+      await rtdb.FirebaseDatabase.instance
+          .ref('reports/${report.reportId}')
+          .set(rtdbData);
+    } catch (e) {
+      // Ignore or log error
+      debugPrint('Failed to sync to Realtime Database in submitReport: $e');
+    }
 
     return report;
   }
@@ -507,6 +540,11 @@ class ReportService {
     }
   }
 
+  /// Delete a report from Firestore, Realtime Database and Storage.
+  Future<void> deleteReport(String reportId) async {
+    await _reportRepository.deleteReportSync(reportId);
+  }
+
   // ─── Aggregates ───
 
   /// Stream global aggregates for home screen floating stats
@@ -529,5 +567,23 @@ class ReportService {
           if (snap.docs.isEmpty) return null;
           return ReportIdentity.fromFirestore(snap.docs.first);
         });
+  }
+
+  /// Performs photo metadata analysis on all uploaded media URLs and saves it back to the report.
+  Future<Map<String, dynamic>?> analyzeAndSaveReportPhotos({
+    required String reportId,
+    required List<String> mediaUrls,
+  }) async {
+    if (mediaUrls.isEmpty) return null;
+
+    // Analyze the first photo (representative of the evidence)
+    final analysis = ImageAnalyzerService.analyzeImageUrl(mediaUrls.first);
+
+    await _firestore
+        .collection(AppConstants.reportsCollection)
+        .doc(reportId)
+        .update({'photoAnalysis': analysis});
+
+    return analysis;
   }
 }

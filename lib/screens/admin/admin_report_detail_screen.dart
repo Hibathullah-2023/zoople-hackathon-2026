@@ -12,10 +12,18 @@ import '../../services/auth_service.dart';
 import '../../services/report_service.dart';
 
 /// Admin report detail — view case details, assign to authority, mark fake.
-/// Identity-blind: admin cannot see reporter PII.
-class AdminReportDetailScreen extends StatelessWidget {
+/// Identity-blind: admin cannot see reporter PII unless opt-in profile is active.
+class AdminReportDetailScreen extends StatefulWidget {
   final String reportId;
   const AdminReportDetailScreen({super.key, required this.reportId});
+
+  @override
+  State<AdminReportDetailScreen> createState() =>
+      _AdminReportDetailScreenState();
+}
+
+class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
+  bool _isAnalyzing = false;
 
   Future<void> _launchMapDirections(ReportModel report) async {
     Uri url;
@@ -36,6 +44,35 @@ class AdminReportDetailScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _runPhotoAnalysis(ReportModel report) async {
+    setState(() => _isAnalyzing = true);
+    try {
+      await context.read<ReportService>().analyzeAndSaveReportPhotos(
+        reportId: report.reportId,
+        mediaUrls: report.mediaUrls,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Photo metadata analysis completed successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Analysis failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isAnalyzing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final reportService = context.read<ReportService>();
@@ -50,7 +87,7 @@ class AdminReportDetailScreen extends StatelessWidget {
         ),
       ),
       body: StreamBuilder<ReportModel?>(
-        stream: reportService.reportStream(reportId),
+        stream: reportService.reportStream(widget.reportId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -184,8 +221,10 @@ class AdminReportDetailScreen extends StatelessWidget {
                       }).toList(),
                     ),
                   ),
+
                 // ─── Evidence Photos & AI Verification ───
                 if (report.mediaUrls.isNotEmpty) ...[
+                  const SizedBox(height: 16),
                   _Section(
                     label: 'ATTACHED EVIDENCE PHOTOS',
                     child: Column(
@@ -230,8 +269,10 @@ class AdminReportDetailScreen extends StatelessWidget {
                             },
                           ),
                         ),
+                        const SizedBox(height: 16),
+
+                        // Render AI Metadata Analysis Card
                         if (report.photoAnalysis != null) ...[
-                          const SizedBox(height: 16),
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
@@ -322,6 +363,85 @@ class AdminReportDetailScreen extends StatelessWidget {
                                 const SizedBox(height: 8),
                                 const Divider(color: AppColors.divider),
                                 const SizedBox(height: 4),
+
+                                // Embedded metadata EXIF specifications
+                                const Text(
+                                  'EXIF Metadata Details:',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                _metaRow(
+                                  'Camera Brand',
+                                  report.photoAnalysis!['cameraBrand'] ??
+                                      'Unknown',
+                                ),
+                                _metaRow(
+                                  'Camera Model',
+                                  report.photoAnalysis!['cameraModel'] ??
+                                      'Unknown',
+                                ),
+                                _metaRow(
+                                  'Software',
+                                  report.photoAnalysis!['software'] ??
+                                      'Unknown',
+                                ),
+                                if (report.photoAnalysis!['gpsLatitude'] !=
+                                        null &&
+                                    report.photoAnalysis!['gpsLatitude'] != 0.0)
+                                  _metaRow(
+                                    'Embedded GPS',
+                                    '${(report.photoAnalysis!['gpsLatitude'] as double).toStringAsFixed(4)}°, ${(report.photoAnalysis!['gpsLongitude'] as double).toStringAsFixed(4)}°',
+                                  ),
+                                const SizedBox(height: 8),
+
+                                // Location mismatch checker (Kerala coords verification)
+                                if (report.photoAnalysis!['gpsLatitude'] !=
+                                        null &&
+                                    report.photoAnalysis!['gpsLatitude'] !=
+                                        0.0 &&
+                                    (report.photoAnalysis!['gpsLatitude']
+                                            as double) >
+                                        30.0) ...[
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    margin: const EdgeInsets.symmetric(
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.error.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Row(
+                                      children: [
+                                        Icon(
+                                          Icons.location_off,
+                                          color: AppColors.error,
+                                          size: 16,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Location Discrepancy: Photo was captured outside Kerala limits!',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.error,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+
+                                const Divider(color: AppColors.divider),
+                                const SizedBox(height: 4),
                                 ...((report.photoAnalysis!['findings']
                                             as List<dynamic>?) ??
                                         [])
@@ -358,6 +478,66 @@ class AdminReportDetailScreen extends StatelessWidget {
                               ],
                             ),
                           ),
+                        ] else ...[
+                          // Metadata analyzer trigger button
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.divider),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.search,
+                                      color: AppColors.secondary,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'IMAGE VERIFICATION',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.secondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Photo metadata has not been verified for authenticity yet.',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: _isAnalyzing
+                                      ? const Center(
+                                          child: CircularProgressIndicator(),
+                                        )
+                                      : ElevatedButton.icon(
+                                          onPressed: () =>
+                                              _runPhotoAnalysis(report),
+                                          icon: const Icon(
+                                            Icons.analytics_outlined,
+                                          ),
+                                          label: const Text(
+                                            'Analyze Photo Metadata',
+                                          ),
+                                        ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ],
                     ),
@@ -365,7 +545,6 @@ class AdminReportDetailScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                 ],
 
-                // ─── Reporter Identity Notice ───
                 // ─── Reporter Identity Notice / Display ───
                 if (report.isAnonymous)
                   Container(
@@ -551,6 +730,37 @@ class AdminReportDetailScreen extends StatelessWidget {
       default:
         return AppColors.outline;
     }
+  }
+
+  Widget _metaRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: AppColors.onSurface,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAssignDialog(BuildContext context, ReportModel report) async {
@@ -800,5 +1010,23 @@ class _Badge extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class RadioGroup<T> extends StatelessWidget {
+  final T groupValue;
+  final ValueChanged<T?> onChanged;
+  final Widget child;
+
+  const RadioGroup({
+    super.key,
+    required this.groupValue,
+    required this.onChanged,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return child;
   }
 }

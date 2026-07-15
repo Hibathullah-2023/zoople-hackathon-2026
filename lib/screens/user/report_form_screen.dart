@@ -332,6 +332,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         return;
       }
 
+      final reportId = reportService.generateReportId();
       final mediaUrls = <String>[];
       bool uploadFailed = false;
       Map<String, dynamic>? photoAnalysis;
@@ -342,7 +343,8 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
           for (final photo in _photos) {
             final ref = FirebaseStorage.instance
                 .ref()
-                .child('evidence')
+                .child('report_media')
+                .child(reportId)
                 .child(
                   '${DateTime.now().millisecondsSinceEpoch}_${photo.name}',
                 );
@@ -418,6 +420,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         district: _selectedDistrict,
         mediaUrls: mediaUrls,
         photoAnalysis: photoAnalysis,
+        pregeneratedReportId: reportId,
       );
 
       // Store reference in user's myReports sub-collection

@@ -18,6 +18,8 @@ dependencies:
   firebase_auth: ^5.6.0
   cloud_firestore: ^5.6.7
   firebase_storage: ^12.4.5
+  firebase_database: ^11.3.10
+  flutter_image_compress: ^2.3.0
   firebase_messaging: ^15.2.5
   firebase_analytics: ^11.4.5
 
@@ -74,6 +76,7 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^6.0.0
+  mocktail: ^1.0.4
 
 flutter:
   uses-material-design: true

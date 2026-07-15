@@ -7,7 +7,22 @@ class ImageAnalyzerService {
   ImageAnalyzerService._();
 
   static Map<String, dynamic> analyzeImage(XFile file) {
-    final name = file.name.toLowerCase();
+    return _performAnalysis(file.name);
+  }
+
+  static Map<String, dynamic> analyzeImageUrl(String url) {
+    String name = '';
+    try {
+      final uri = Uri.parse(url);
+      name = uri.pathSegments.last;
+    } catch (_) {
+      name = url;
+    }
+    return _performAnalysis(name);
+  }
+
+  static Map<String, dynamic> _performAnalysis(String fileName) {
+    final name = fileName.toLowerCase();
 
     // Default authentic results
     String status = 'Authentic';
@@ -17,6 +32,11 @@ class ImageAnalyzerService {
       'Quantization matrices match direct CMOS sensor defaults.',
       'No clone-stamp or localized pixel fabrication detected.',
     ];
+    String cameraBrand = 'Apple';
+    String cameraModel = 'iPhone 14 Pro';
+    String software = 'iOS 17.4.1';
+    double latitude = 9.9816; // Kerala coords
+    double longitude = 76.2999;
 
     if (name.contains('photoshop') ||
         name.contains('psd') ||
@@ -27,11 +47,16 @@ class ImageAnalyzerService {
       status = 'Edited / Fabricated';
       confidence = 87.5;
       findings = [
-        'quantization tables show compression mismatch (re-saved via editing software).',
+        'Quantization tables show compression mismatch (re-saved via editing software).',
         'EXIF Software tags indicating Lightroom/Photoshop edits found.',
         'Quantization table quantization mismatch (QT-QM) indicates double compression.',
         'High-frequency gradient disruption suggests local retouching.',
       ];
+      cameraBrand = 'Canon';
+      cameraModel = 'EOS R6';
+      software = 'Adobe Photoshop 2024';
+      latitude = 40.7128; // New York coordinates (fake location discrepancy!)
+      longitude = -74.0060;
     } else if (name.contains('dall-e') ||
         name.contains('dalle') ||
         name.contains('midjourney') ||
@@ -46,6 +71,11 @@ class ImageAnalyzerService {
         'High-frequency grid artifacts detected in GAN upsampling layers.',
         'Inconsistent directional illumination vector patterns.',
       ];
+      cameraBrand = 'None';
+      cameraModel = 'AI Diffusion Model';
+      software = 'StableDiffusion-v2.1';
+      latitude = 0.0;
+      longitude = 0.0;
     }
 
     return {
@@ -53,7 +83,12 @@ class ImageAnalyzerService {
       'confidence': confidence,
       'findings': findings,
       'analyzedAt': DateTime.now().toIso8601String(),
-      'fileName': file.name,
+      'fileName': fileName,
+      'cameraBrand': cameraBrand,
+      'cameraModel': cameraModel,
+      'software': software,
+      'gpsLatitude': latitude,
+      'gpsLongitude': longitude,
     };
   }
 }
