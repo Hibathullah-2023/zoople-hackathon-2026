@@ -1,5 +1,6 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Gemini AI Chat Service for Rehabilitation Support.
 ///
@@ -62,8 +63,7 @@ class GeminiChatService {
   /// (e.g., Firebase Remote Config, environment variable, or server-side proxy).
   ///
   /// Get your API key from: https://aistudio.google.com/apikey
-
-  static const _apiKey = String.fromEnvironment('');
+  final _apiKey = dotenv.env['GEMINI_API_KEY']!;
 
   /// System instruction that fine-tunes Gemini's behavior for rehabilitation support.
   /// This acts as the "personality" and knowledge base for the chatbot.
