@@ -28,16 +28,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<ReportModel> _currentReports = [];
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<AuthService>().seedDefaultUsers();
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final reportService = context.read<ReportService>();
 

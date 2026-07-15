@@ -45,9 +45,12 @@ class ReportRepositoryImpl implements ReportRepository {
       );
 
       // 3. Upload to Storage
+      final bytes = await compressedFile.readAsBytes();
       photoUrl = await _storageService.uploadWithRetry(
         reportId: report.reportId,
-        imageFile: compressedFile,
+        imageBytes: bytes,
+        fileName:
+            '${report.reportId}_${DateTime.now().millisecondsSinceEpoch}.jpg',
       );
 
       // Clean up temporary compressed file
@@ -117,7 +120,7 @@ class ReportRepositoryImpl implements ReportRepository {
     await _realtimeDb.ref('reports/$reportId').remove();
 
     // 3. Delete from Firebase Storage
-    await _storageService.deleteReportImage(reportId);
+    await _storageService.deleteReportMedia(reportId);
   }
 
   @override

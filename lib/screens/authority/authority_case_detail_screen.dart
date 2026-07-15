@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
@@ -126,6 +127,91 @@ class AuthorityCaseDetailScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
+
+                // ─── Evidence Photos & Download ───
+                if (report.mediaUrls.isNotEmpty) ...[
+                  _Section(
+                    label: 'ATTACHED EVIDENCE',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          height: 120,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: report.mediaUrls.length,
+                            itemBuilder: (context, index) {
+                              final url = report.mediaUrls[index];
+                              return Container(
+                                margin: const EdgeInsets.only(right: 12),
+                                width: 120,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.divider),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(7),
+                                  child: Image.network(
+                                    url,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Center(
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          color: AppColors.onSurfaceVariant,
+                                        ),
+                                      );
+                                    },
+                                    loadingBuilder: (context, child, progress) {
+                                      if (progress == null) return child;
+                                      return const Center(
+                                        child: CircularProgressIndicator(),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              for (final url in report.mediaUrls) {
+                                final uri = Uri.parse(url);
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(
+                                    uri,
+                                    mode: LaunchMode.externalApplication,
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(
+                              Icons.download,
+                              color: AppColors.secondary,
+                              size: 18,
+                            ),
+                            label: Text(
+                              'Download Evidence (${report.mediaUrls.length} photo${report.mediaUrls.length > 1 ? 's' : ''})',
+                              style: const TextStyle(
+                                color: AppColors.secondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: AppColors.secondary),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
 
                 // ─── Reporter Identity Restricted notice for Authorities ───
                 Container(

@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:go_router/go_router.dart';
@@ -16,6 +15,7 @@ import '../../constants/kerala_locations.dart';
 import '../../services/image_analyzer_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/report_service.dart';
+import '../../services/report_image_storage_service.dart';
 
 /// Multi-step incident report form.
 /// Steps: Description → Category → Photos → Location → Review → Submit
@@ -339,26 +339,26 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
 
       if (_photos.isNotEmpty) {
         photoAnalysis = ImageAnalyzerService.analyzeImage(_photos.first);
+        final imageStorageService = ReportImageStorageService();
         try {
-          for (final photo in _photos) {
-            final ref = FirebaseStorage.instance
-                .ref()
-                .child('report_media')
-                .child(reportId)
-                .child(
-                  '${DateTime.now().millisecondsSinceEpoch}_${photo.name}',
-                );
+          for (int i = 0; i < _photos.length; i++) {
+            final photo = _photos[i];
             final bytes = await photo.readAsBytes();
-            final uploadTask = ref.putData(
-              bytes,
-              SettableMetadata(contentType: 'image/jpeg'),
-            );
-            final taskSnapshot = await uploadTask.timeout(
-              const Duration(seconds: 15),
-            );
-            final url = await taskSnapshot.ref.getDownloadURL();
+
+            // Use the service with built-in retry logic (3 retries, exponential backoff)
+            final url = await imageStorageService
+                .uploadWithRetry(
+                  reportId: reportId,
+                  imageBytes: bytes,
+                  fileName: photo.name.isNotEmpty ? photo.name : 'photo_$i.jpg',
+                )
+                .timeout(const Duration(seconds: 120));
+
             mediaUrls.add(url);
           }
+        } on TimeoutException {
+          uploadFailed = true;
+          debugPrint('Upload timed out after 120 seconds');
         } catch (uploadError) {
           uploadFailed = true;
           debugPrint('Upload error caught: $uploadError');

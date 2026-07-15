@@ -122,25 +122,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // ─── Anonymity Toggle ───
-                _SettingCard(
-                  icon: user.isAnonymous
-                      ? Icons.visibility_off
-                      : Icons.visibility,
-                  iconColor: AppColors.secondary,
-                  title: 'Anonymous Mode',
-                  subtitle: user.isAnonymous
-                      ? 'Your identity is hidden from admin & authorities'
-                      : 'Your identity may be visible to admin & authorities',
-                  trailing: Switch(
-                    value: user.isAnonymous,
-                    activeThumbColor: AppColors.secondary,
-                    onChanged: (val) async {
-                      await authService.toggleAnonymity(val);
-                    },
+                // ─── Anonymity Toggle (Citizens only) ───
+                if (user.role == 'user') ...[
+                  _SettingCard(
+                    icon: user.isAnonymous
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                    iconColor: AppColors.secondary,
+                    title: 'Anonymous Mode',
+                    subtitle: user.isAnonymous
+                        ? 'Your identity is hidden from admin & authorities'
+                        : 'Your identity may be visible to admin & authorities',
+                    trailing: Switch(
+                      value: user.isAnonymous,
+                      activeThumbColor: AppColors.secondary,
+                      onChanged: (val) async {
+                        await authService.toggleAnonymity(val);
+                      },
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
+                  const SizedBox(height: 12),
+                ],
 
                 // ─── Text Size Control Card ───
                 Consumer<AccessibilityService>(

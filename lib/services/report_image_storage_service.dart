@@ -1,21 +1,27 @@
 import 'dart:async';
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
+/// Cross-platform report image storage service.
+/// Uses [Uint8List] bytes instead of dart:io [File] so it works on both
+/// web and mobile platforms.
 class ReportImageStorageService {
   final FirebaseStorage _storage;
 
   ReportImageStorageService({FirebaseStorage? storage})
     : _storage = storage ?? FirebaseStorage.instance;
 
-  /// Start an upload task for a report photo.
-  /// Path: reports/{reportId}/photo.jpg
-  /// Automatically overwrites previous file at the path to prevent duplicates.
-  UploadTask uploadReportPhoto({
+  /// Upload report photo bytes to Firebase Storage.
+  /// Path: report_media/{reportId}/{timestamp}_{fileName}
+  ///
+  /// Returns the Firebase Storage download URL on success.
+  UploadTask uploadReportPhotoBytes({
     required String reportId,
-    required File imageFile,
+    required Uint8List imageBytes,
+    required String fileName,
   }) {
-    final String path = 'reports/$reportId/photo.jpg';
+    final String path =
+        'report_media/$reportId/${DateTime.now().millisecondsSinceEpoch}_$fileName';
     final Reference ref = _storage.ref().child(path);
 
     final SettableMetadata metadata = SettableMetadata(
@@ -23,17 +29,19 @@ class ReportImageStorageService {
       customMetadata: {
         'reportId': reportId,
         'uploadedAt': DateTime.now().toIso8601String(),
+        'originalFileName': fileName,
       },
     );
 
-    return ref.putFile(imageFile, metadata);
+    return ref.putData(imageBytes, metadata);
   }
 
-  /// Helper to upload with retry logic.
+  /// Upload with retry logic using bytes.
   /// If the upload task fails, it can be retried up to [maxRetries] times.
   Future<String> uploadWithRetry({
     required String reportId,
-    required File imageFile,
+    required Uint8List imageBytes,
+    required String fileName,
     int maxRetries = 3,
     void Function(double progress)? onProgress,
     StreamController<double>? progressController,
@@ -41,9 +49,10 @@ class ReportImageStorageService {
     int attempt = 0;
     while (true) {
       try {
-        final UploadTask task = uploadReportPhoto(
+        final UploadTask task = uploadReportPhotoBytes(
           reportId: reportId,
-          imageFile: imageFile,
+          imageBytes: imageBytes,
+          fileName: fileName,
         );
 
         // Pipe progress to listeners if provided
@@ -51,10 +60,12 @@ class ReportImageStorageService {
             .snapshotEvents
             .listen(
               (snapshot) {
-                final double progress =
-                    snapshot.bytesTransferred / snapshot.totalBytes;
-                onProgress?.call(progress);
-                progressController?.add(progress);
+                if (snapshot.totalBytes > 0) {
+                  final double progress =
+                      snapshot.bytesTransferred / snapshot.totalBytes;
+                  onProgress?.call(progress);
+                  progressController?.add(progress);
+                }
               },
               onError: (e) {
                 debugPrint('Upload task snapshot error: $e');
@@ -69,6 +80,9 @@ class ReportImageStorageService {
         if (attempt >= maxRetries || e is TimeoutException) {
           rethrow;
         }
+        debugPrint(
+          'Upload attempt $attempt failed, retrying in ${attempt * 2}s: $e',
+        );
         // Exponential backoff
         await Future.delayed(Duration(seconds: attempt * 2));
       }
@@ -76,22 +90,18 @@ class ReportImageStorageService {
   }
 
   /// Delete all media associated with a report.
-  Future<void> deleteReportImage(String reportId) async {
-    final String path = 'reports/$reportId/photo.jpg';
-    final Reference ref = _storage.ref().child(path);
+  Future<void> deleteReportMedia(String reportId) async {
+    final Reference folderRef = _storage.ref().child('report_media/$reportId');
     try {
-      await ref.delete();
+      final ListResult listResult = await folderRef.listAll();
+      for (final item in listResult.items) {
+        await item.delete();
+      }
     } on FirebaseException catch (e) {
-      // Ignore if the file does not exist (to prevent crash on deletion of reports without images)
+      // Ignore if the folder/files do not exist
       if (e.code != 'object-not-found') {
         rethrow;
       }
     }
   }
-}
-
-// Global logger helper
-void debugPrint(String message) {
-  // ignore: avoid_print
-  print('[ReportImageStorageService] $message');
 }

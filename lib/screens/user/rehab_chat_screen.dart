@@ -8,6 +8,7 @@ import 'package:geocoding/geocoding.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/kerala_locations.dart';
 import '../../services/auth_service.dart';
+import '../../services/gemini_chat_service.dart';
 
 /// Combined Rehabilitation screen featuring the AI Chatbot and the Nearby Centres Directory.
 class RehabChatScreen extends StatefulWidget {
@@ -19,11 +20,14 @@ class RehabChatScreen extends StatefulWidget {
 
 class _RehabChatScreenState extends State<RehabChatScreen> {
   String? _detectedDistrict;
+  final GeminiChatService _geminiService = GeminiChatService();
+  bool _isAiTyping = false;
 
   @override
   void initState() {
     super.initState();
     _detectCurrentDistrict();
+    _geminiService.initialize();
   }
 
   Future<void> _detectCurrentDistrict() async {
@@ -86,29 +90,6 @@ class _RehabChatScreenState extends State<RehabChatScreen> {
   ];
   final _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-
-  final Map<String, String> _cannedResponses = {
-    'help':
-        'I can provide information on nearby rehabilitation centres, recovery advice, warning signs of addiction, or just offer a safe, anonymous space to chat. What is on your mind?',
-    'hello':
-        'Hello! Please know that you are not alone in this journey. I am here to help you find resources and motivation.',
-    'hi':
-        'Hello! Please know that you are not alone in this journey. I am here to help you find resources and motivation.',
-    'rehab':
-        'Rehabilitation centres provide structured therapy, detox support, and medical counseling. You can view a list of nearby centres by selecting the "Nearby Centres" tab above.',
-    'support':
-        'Seeking support is a very courageous first step. You can talk to family, contact professional counselors, or visit a registered de-addiction centre. We have listed verified Kerala centres in the directory tab.',
-    'addiction':
-        'Addiction is a complex condition, but recovery is absolutely possible. Professional treatment programs, behavioral therapy, and support groups like Narcotics Anonymous are highly effective.',
-    'depressed':
-        'I am sorry you are feeling this way. Recovery can be emotionally challenging. Please consider talking to a mental health professional or counselor. You can also reach out to Kerala de-addiction helplines.',
-    'sad':
-        'I hear you. It is okay to have difficult days. Remember to take things one step at a time. Professional guidance can help make this transition easier.',
-    'thank':
-        'You are very welcome! Nizhal is committed to supporting our community. Stay strong, and take care of yourself.',
-    'thanks':
-        'You are very welcome! Nizhal is committed to supporting our community. Stay strong, and take care of yourself.',
-  };
 
   // Directory State
   String? _selectedDistrict;
@@ -179,33 +160,41 @@ class _RehabChatScreenState extends State<RehabChatScreen> {
     setState(() {
       _messages.add({'sender': 'user', 'text': text, 'time': 'Just now'});
       _messageController.clear();
+      _isAiTyping = true;
     });
 
     _scrollToBottom();
 
-    Future.delayed(const Duration(milliseconds: 1000), () {
-      final responseText = _getAIResponse(text);
-      if (mounted) {
-        setState(() {
-          _messages.add({
-            'sender': 'ai',
-            'text': responseText,
-            'time': 'Just now',
-          });
+    // Call Gemini API asynchronously
+    _geminiService
+        .sendMessage(text)
+        .then((responseText) {
+          if (mounted) {
+            setState(() {
+              _isAiTyping = false;
+              _messages.add({
+                'sender': 'ai',
+                'text': responseText,
+                'time': 'Just now',
+              });
+            });
+            _scrollToBottom();
+          }
+        })
+        .catchError((e) {
+          if (mounted) {
+            setState(() {
+              _isAiTyping = false;
+              _messages.add({
+                'sender': 'ai',
+                'text':
+                    'I\'m having trouble connecting right now. Please try again, or call the Kerala Mental Health Helpline at 1800-599-0019 for immediate support.',
+                'time': 'Just now',
+              });
+            });
+            _scrollToBottom();
+          }
         });
-        _scrollToBottom();
-      }
-    });
-  }
-
-  String _getAIResponse(String userInput) {
-    final cleanInput = userInput.toLowerCase();
-    for (final key in _cannedResponses.keys) {
-      if (cleanInput.contains(key)) {
-        return _cannedResponses[key]!;
-      }
-    }
-    return 'Thank you for sharing. Recovering from substance abuse requires patience and professional support. I highly recommend reaching out to a local health professional or a rehabilitation center for personalized guidance. You are always welcome to check our "Nearby Centres" tab for contacts.';
   }
 
   void _scrollToBottom() {
@@ -231,6 +220,7 @@ class _RehabChatScreenState extends State<RehabChatScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _geminiService.dispose();
     super.dispose();
   }
 
@@ -302,8 +292,57 @@ class _RehabChatScreenState extends State<RehabChatScreen> {
                   child: ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(16),
-                    itemCount: _messages.length,
+                    itemCount: _messages.length + (_isAiTyping ? 1 : 0),
                     itemBuilder: (context, index) {
+                      // Show typing indicator as last item
+                      if (_isAiTyping && index == _messages.length) {
+                        return Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceContainerHigh,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(16),
+                                topRight: Radius.circular(16),
+                                bottomLeft: Radius.circular(4),
+                                bottomRight: Radius.circular(16),
+                              ),
+                              border: Border.all(color: AppColors.divider),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.secondary.withValues(
+                                      alpha: 0.6,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Thinking...',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.onSurfaceVariant
+                                        .withValues(alpha: 0.7),
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
                       final msg = _messages[index];
                       final isUser = msg['sender'] == 'user';
                       return _ChatBubble(

@@ -269,6 +269,41 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
                             },
                           ),
                         ),
+                        const SizedBox(height: 10),
+
+                        // ─── Download Evidence Button ───
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              for (final url in report.mediaUrls) {
+                                final uri = Uri.parse(url);
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(
+                                    uri,
+                                    mode: LaunchMode.externalApplication,
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(
+                              Icons.download,
+                              color: AppColors.secondary,
+                              size: 18,
+                            ),
+                            label: Text(
+                              'Download Evidence (${report.mediaUrls.length} photo${report.mediaUrls.length > 1 ? 's' : ''})',
+                              style: const TextStyle(
+                                color: AppColors.secondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: AppColors.secondary),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 16),
 
                         // Render AI Metadata Analysis Card
