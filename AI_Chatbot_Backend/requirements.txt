@@ -1,0 +1,20 @@
+# Web Framework and Server
+fastapi>=0.110.0
+uvicorn>=0.28.0
+pydantic>=2.6.0
+
+# LangChain Core and Integrations
+langchain-core>=0.1.30
+langchain-community>=0.0.27
+langchain-openai>=0.0.8
+langchain-huggingface>=0.0.1
+
+# Vector Database and Document Parsing
+faiss-cpu>=1.8.0
+pypdf>=4.1.0
+
+# Local Embeddings Processing
+sentence-transformers>=2.5.0
+
+# Environment Configuration
+python-dotenv>=1.0.1

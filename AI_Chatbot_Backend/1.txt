@@ -1,0 +1,60 @@
+To transition your project to a completely local setup, you need to configure LM Studio so it acts as the engine for your FastAPI backend.
+
+Here are the step-by-step instructions to download the model, run the local server, and connect your code.
+
+Step 1: Download and Install LM Studio
+Go to the official LM Studio website and download the installer for your operating system (Windows, Mac, or Linux).
+
+Install and launch the application.
+
+Step 2: Download the Llama 3.2 Model
+Click the Search (Magnifying Glass) icon on the left sidebar.
+
+In the search bar at the top, type: Llama 3.2 3B Instruct.
+
+You will see a list of results. Look for the official repository or high-quality community quantizations (such as those by LM Studio or Bartowski).
+
+Click Download next to a Q4_K_M or Q8_0 variant.
+
+Note: Q4_K_M is the optimal balance of processing speed and intelligence for most consumer laptops and desktops.
+
+Step 3: Start the Local API Server
+Click the Developer / Local Server icon on the left sidebar (it looks like a double-headed arrow or a radar chip).
+
+At the top of the screen, click the dropdown menu that says "Select a model to load" and choose the Llama 3.2 3B Instruct model you just downloaded. Wait a few moments for it to load into your system's memory (RAM/VRAM).
+
+In the right-hand settings panel, ensure the Port is set to 1234.
+
+Turn on the Cross-Origin Resource Sharing (CORS) toggle if it is visible.
+
+Click the green Start Server button.
+
+Keep LM Studio running in the background. It is now serving an OpenAI-compatible API endpoint at http://localhost:1234/v1.
+
+Step 4: Run Your FastAPI Backend
+With LM Studio hosting the model, you can now boot up your local Python application.
+
+Open your terminal or command prompt in your project folder.
+
+If you haven't done so already, regenerate your offline vector database using your local embeddings:
+
+Bash
+python ingest.py
+Start your FastAPI server using Uvicorn:
+
+Bash
+uvicorn api:app --reload
+Your terminal will output that the server is running locally at http://127.0.0.1:8000.
+
+How the System Flows Together
+[Mobile App / Frontend] 
+       │  (Sends message JSON)
+       ▼
+[FastAPI Server (api.py)] ──(Searches Local FAISS Index)──► [Extracted PDF Chunks]
+       │
+       │  (Sends Prompt + PDF Chunks via localhost:1234)
+       ▼
+[LM Studio Server (Llama 3.2)] ──(Generates Local Response)──► Back to FastAPI ──► Back to App
+Your setup is now completely self-contained. The backend script will capture requests, read your local FAISS vector store, pass the data directly into LM Studio, and return structured responses instantly.
+
+Are you planning to test this API directly from your computer first using an API client like Postman, or do you want to jump straight into connecting a mobile device over your local Wi-Fi network?

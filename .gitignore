@@ -47,3 +47,5 @@ app.*.map.json
 node_modules/
 **/node_modules/
 .env
+.venv/
+**/__pycache__/
