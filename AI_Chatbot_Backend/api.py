@@ -101,10 +101,15 @@ def build_rag_chain():
 
 def build_chitchat_chain():
     chitchat_prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are an empathetic, polite, and helpful support assistant. Respond naturally to the user's greeting or casual courtesy. Keep it brief."),
+        ("system", 
+         "You are an empathetic, polite, and helpful support assistant. Respond naturally to the user's greeting or casual courtesy. Keep it brief. "
+         "You are strictly dedicated to drug rehabilitation and recovery. If the user asks or tries to discuss any other topic (such as love, coding, sports, general knowledge), "
+         "you MUST politely decline and guide them back to drug rehabilitation and recovery topics."
+        ),
         ("human", "{input}")
     ])
     return chitchat_prompt | llm
+
 
 # 6.5. Build Crisis Support Engine
 
