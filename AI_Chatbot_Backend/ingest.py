@@ -28,6 +28,49 @@ def ingest_documents():
     chunks = text_splitter.split_documents(documents)
     print(f"Generated {len(chunks)} text chunks.")
 
+    # Step 2.5: Tag chunks with geographic metadata (Kerala districts)
+    print("Tagging chunks with geographic metadata...")
+    DISTRICT_MAPPING = {
+        "trivandrum": "thiruvananthapuram",
+        "thiruvananthapuram": "thiruvananthapuram",
+        "thiruvanathapuram": "thiruvananthapuram",
+        "kollam": "kollam",
+        "quilon": "kollam",
+        "pathanamthitta": "pathanamthitta",
+        "alappuzha": "alappuzha",
+        "allapuzha": "alappuzha",
+        "alleppey": "alappuzha",
+        "kottayam": "kottayam",
+        "idukki": "idukki",
+        "iddukki": "idukki",
+        "ernakulam": "ernakulam",
+        "ernakulum": "ernakulam",
+        "kochi": "ernakulam",
+        "cochin": "ernakulam",
+        "thrissur": "thrissur",
+        "trichur": "thrissur",
+        "palakkad": "palakkad",
+        "palghat": "palakkad",
+        "malappuram": "malappuram",
+        "calicut": "kozhikode",
+        "kozhikode": "kozhikode",
+        "khozhikode": "kozhikode",
+        "wayanad": "wayanad",
+        "kannur": "kannur",
+        "cannanore": "kannur",
+        "kasaragod": "kasaragod",
+        "kasargod": "kasaragod"
+    }
+
+    for chunk in chunks:
+        text_lower = chunk.page_content.lower()
+        matched_districts = set()
+        for keyword, canonical in DISTRICT_MAPPING.items():
+            if keyword in text_lower:
+                matched_districts.add(canonical)
+        if matched_districts:
+            chunk.metadata["districts"] = list(matched_districts)
+
     # Step 3: Compute embeddings locally using CPU (no internet required)
     print("Downloading/Loading local HuggingFace embedding model (all-MiniLM-L6-v2)...")
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
