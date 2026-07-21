@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,7 +9,7 @@ import 'package:geocoding/geocoding.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/kerala_locations.dart';
 import '../../services/auth_service.dart';
-import '../../services/gemini_chat_service.dart';
+import '../../services/websocket_chat_service.dart';
 
 /// Combined Rehabilitation screen featuring the AI Chatbot and the Nearby Centres Directory.
 class RehabChatScreen extends StatefulWidget {
@@ -20,15 +21,74 @@ class RehabChatScreen extends StatefulWidget {
 
 class _RehabChatScreenState extends State<RehabChatScreen> {
   String? _detectedDistrict;
-  final GeminiChatService _geminiService = GeminiChatService();
+  final WebSocketChatService _chatService = WebSocketChatService();
   bool _isAiTyping = false;
 
-  @override
+    @override
   void initState() {
     super.initState();
     _detectCurrentDistrict();
-    _geminiService.initialize();
+    _connectWebSocket();
   }
+
+  void _connectWebSocket() async {
+    // kIsWeb is imported automatically via material.dart.
+    // Use localhost for Web/iOS/Desktop, and 10.0.2.2 for the Android Emulator.
+    final String wsUrl = kIsWeb
+        ? "ws://localhost:8000/chat"
+        : "ws://10.0.2.2:8000/chat";
+
+    try {
+      await _chatService.connect(wsUrl);
+
+      _chatService.onChunkReceived = (chunk, intent) {
+        if (mounted) {
+          setState(() {
+            _isAiTyping = false;
+            // Append incoming streaming chunks to the last message if it's from AI,
+            // otherwise create a new AI message.
+            if (_messages.isNotEmpty && _messages.last['sender'] == 'ai') {
+              _messages.last['text'] = _messages.last['text'] + chunk;
+            } else {
+              _messages.add({
+                'sender': 'ai',
+                'text': chunk,
+                'time': 'Just now',
+              });
+            }
+          });
+          _scrollToBottom();
+        }
+      };
+
+      _chatService.onDone = () {
+        if (mounted) {
+          setState(() {
+            _isAiTyping = false;
+          });
+        }
+      };
+
+      _chatService.onError = (err) => _handleChatError();
+    } catch (e) {
+      _handleChatError();
+    }
+  }
+
+  void _handleChatError() {
+    if (mounted) {
+      setState(() {
+        _isAiTyping = false;
+        _messages.add({
+          'sender': 'ai',
+          'text': 'I\'m having trouble connecting to the local server. Please ensure the backend is running at http://localhost:8000.',
+          'time': 'Just now',
+        });
+      });
+      _scrollToBottom();
+    }
+  }
+
 
   Future<void> _detectCurrentDistrict() async {
     try {
@@ -153,49 +213,27 @@ class _RehabChatScreenState extends State<RehabChatScreen> {
     },
   ];
 
-  void _sendMessage() {
+    void _sendMessage() {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
     setState(() {
+      // 1. Add user's message bubble
       _messages.add({'sender': 'user', 'text': text, 'time': 'Just now'});
+      
       _messageController.clear();
       _isAiTyping = true;
     });
 
     _scrollToBottom();
 
-    // Call Gemini API asynchronously
-    _geminiService
-        .sendMessage(text)
-        .then((responseText) {
-          if (mounted) {
-            setState(() {
-              _isAiTyping = false;
-              _messages.add({
-                'sender': 'ai',
-                'text': responseText,
-                'time': 'Just now',
-              });
-            });
-            _scrollToBottom();
-          }
-        })
-        .catchError((e) {
-          if (mounted) {
-            setState(() {
-              _isAiTyping = false;
-              _messages.add({
-                'sender': 'ai',
-                'text':
-                    'I\'m having trouble connecting right now. Please try again, or call the Kerala Mental Health Helpline at 1800-599-0019 for immediate support.',
-                'time': 'Just now',
-              });
-            });
-            _scrollToBottom();
-          }
-        });
+    try {
+      _chatService.sendMessage(text);
+    } catch (e) {
+      _handleChatError();
+    }
   }
+
 
   void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 100), () {
@@ -216,13 +254,14 @@ class _RehabChatScreenState extends State<RehabChatScreen> {
     }
   }
 
-  @override
+    @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
-    _geminiService.dispose();
+    _chatService.disconnect();
     super.dispose();
   }
+
 
   @override
   Widget build(BuildContext context) {
